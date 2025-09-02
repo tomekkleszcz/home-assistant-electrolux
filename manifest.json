@@ -1,0 +1,16 @@
+{
+  "domain": "electrolux",
+  "name": "Electrolux Home",
+  "codeowners": [
+    "@tomekkleszcz"
+  ],
+  "config_flow": true,
+  "dependencies": [],
+  "documentation": "https://www.home-assistant.io/integrations/electrolux",
+  "homekit": {},
+  "iot_class": "cloud_polling",
+  "quality_scale": "bronze",
+  "requirements": [],
+  "ssdp": [],
+  "zeroconf": []
+}
