@@ -25,15 +25,21 @@ ElectroluxConfigEntry = ConfigEntry[ElectroluxConfigData]
 async def async_setup_entry(hass: HomeAssistant, entry: ElectroluxConfigEntry) -> bool:
     store = Store(hass, version=1, key=DOMAIN)
     stored_data = await store.async_load()
+    
+    _LOGGER.info(f"Stored data: {stored_data}")
+    _LOGGER.info(f"Entry data: {entry.data}")
 
     # Always initialize hass.data[DOMAIN] first
     hass.data.setdefault(DOMAIN, {})
 
-    if stored_data and stored_data.get("api_key") and stored_data.get("access_token") and stored_data.get("refresh_token") and entry.data.get("api_key"):
+    # Try to get data from stored_data first, then from entry.data
+    access_token = stored_data.get("access_token") if stored_data else entry.data.get("access_token")
+    refresh_token = stored_data.get("refresh_token") if stored_data else entry.data.get("refresh_token")
+    token_expiration_date_str = stored_data.get("token_expiration_date") if stored_data else entry.data.get("token_expiration_date")
+    
+    if access_token and refresh_token and token_expiration_date_str and entry.data.get("api_key"):
         api_key: str = cast(str, entry.data.get("api_key"))
-        access_token: str = stored_data.get("access_token")
-        refresh_token: str = stored_data.get("refresh_token")
-        token_expiration_date: datetime = datetime.fromisoformat(stored_data.get("token_expiration_date"))
+        token_expiration_date: datetime = datetime.fromisoformat(token_expiration_date_str)
         scan_interval: int = cast(int, entry.options.get("scan_interval", entry.data.get("scan_interval", 120)))
 
         token: Token = {

@@ -1,5 +1,6 @@
 {
     "name": "Electrolux Home",
     "content_in_root": true,
-    "homeassistant": "2025.9.0"
+    "homeassistant": "2025.9.0",
+    "persistent_directory": "electrolux_data"
 }
