@@ -1,104 +1,104 @@
-"""Config flow for the Electrolux Home integration."""
-
 from __future__ import annotations
-
 import logging
 from typing import Any
-
 import voluptuous as vol
-
-from homeassistant.config_entries import ConfigFlow, ConfigFlowResult
-from homeassistant.const import CONF_HOST, CONF_PASSWORD, CONF_USERNAME
-from homeassistant.core import HomeAssistant
+from homeassistant.config_entries import ConfigFlow as HassConfigFlow, ConfigFlowResult, OptionsFlow
+from homeassistant.const import CONF_SCAN_INTERVAL
+from homeassistant.core import HomeAssistant, callback
 from homeassistant.exceptions import HomeAssistantError
+from homeassistant.config_entries import ConfigEntry
+from .options_flow import ElectroluxOptionsFlow
+from .const import DOMAIN, CONF_API_KEY, CONF_REFRESH_TOKEN, CONF_ACCESS_TOKEN, CONF_TOKEN_EXPIRATION_DATE
+from .token import Token
+from .hub import ElectroluxHub
+from .jwt_utils import get_token_expiration
 
-from .const import DOMAIN
 
 _LOGGER = logging.getLogger(__name__)
 
-# TODO adjust the data schema to the data that you need
 STEP_USER_DATA_SCHEMA = vol.Schema(
     {
-        vol.Required(CONF_HOST): str,
-        vol.Required(CONF_USERNAME): str,
-        vol.Required(CONF_PASSWORD): str,
+        vol.Required(CONF_API_KEY): str,
+        vol.Required(CONF_ACCESS_TOKEN): str,
+        vol.Required(CONF_REFRESH_TOKEN): str,
+        vol.Required(CONF_SCAN_INTERVAL, default=120): int,
     }
 )
 
-
-class PlaceholderHub:
-    """Placeholder class to make tests pass.
-
-    TODO Remove this placeholder class and replace with things from your PyPI package.
-    """
-
-    def __init__(self, host: str) -> None:
-        """Initialize."""
-        self.host = host
-
-    async def authenticate(self, username: str, password: str) -> bool:
-        """Test if we can authenticate with the host."""
-        return True
-
+STEP_OPTIONS_DATA_SCHEMA = vol.Schema(
+    {
+        vol.Required(CONF_SCAN_INTERVAL, default=120): int,
+    }
+)
 
 async def validate_input(hass: HomeAssistant, data: dict[str, Any]) -> dict[str, Any]:
-    """Validate the user input allows us to connect.
+    # Extract token expiration from JWT
+    token_expiration = get_token_expiration(data[CONF_ACCESS_TOKEN])
+    
+    token: Token = {
+        "access_token": data[CONF_ACCESS_TOKEN],
+        "refresh_token": data[CONF_REFRESH_TOKEN],
+        "token_expiration_date": token_expiration
+    }
 
-    Data has the keys from STEP_USER_DATA_SCHEMA with values provided by the user.
-    """
-    # TODO validate the data can be used to set up a connection.
+    hub = ElectroluxHub(
+        hass=hass,
+        api_key=data[CONF_API_KEY],
+        token=token,
+        scan_interval=data[CONF_SCAN_INTERVAL]
+    )
 
-    # If your PyPI package is not built with async, pass your methods
-    # to the executor:
-    # await hass.async_add_executor_job(
-    #     your_validate_func, data[CONF_USERNAME], data[CONF_PASSWORD]
-    # )
+    if not await hub.validate_credentials():
+        raise InvalidCredentials
 
-    hub = PlaceholderHub(data[CONF_HOST])
+    return {
+        "title": "Electrolux Home",
+        CONF_SCAN_INTERVAL: data[CONF_SCAN_INTERVAL]
+    }
 
-    if not await hub.authenticate(data[CONF_USERNAME], data[CONF_PASSWORD]):
-        raise InvalidAuth
-
-    # If you cannot connect:
-    # throw CannotConnect
-    # If the authentication is wrong:
-    # InvalidAuth
-
-    # Return info that you want to store in the config entry.
-    return {"title": "Name of the device"}
-
-
-class ConfigFlow(ConfigFlow, domain=DOMAIN):
-    """Handle a config flow for Electrolux Home."""
-
-    VERSION = 1
-
+class ConfigFlow(HassConfigFlow, domain=DOMAIN):
     async def async_step_user(
         self, user_input: dict[str, Any] | None = None
     ) -> ConfigFlowResult:
-        """Handle the initial step."""
         errors: dict[str, str] = {}
         if user_input is not None:
             try:
                 info = await validate_input(self.hass, user_input)
             except CannotConnect:
                 errors["base"] = "cannot_connect"
-            except InvalidAuth:
-                errors["base"] = "invalid_auth"
+            except InvalidCredentials:
+                errors["base"] = "invalid_credentials"
             except Exception:
                 _LOGGER.exception("Unexpected exception")
                 errors["base"] = "unknown"
             else:
-                return self.async_create_entry(title=info["title"], data=user_input)
+                # Separate data and options
+                data = {
+                    CONF_API_KEY: user_input[CONF_API_KEY],
+                    CONF_ACCESS_TOKEN: user_input[CONF_ACCESS_TOKEN],
+                    CONF_REFRESH_TOKEN: user_input[CONF_REFRESH_TOKEN]
+                }
+                options = {
+                    CONF_SCAN_INTERVAL: user_input[CONF_SCAN_INTERVAL]
+                }
+                return self.async_create_entry(title=info["title"], data=data, options=options)
 
         return self.async_show_form(
-            step_id="user", data_schema=STEP_USER_DATA_SCHEMA, errors=errors
+            step_id="user", 
+            data_schema=STEP_USER_DATA_SCHEMA, 
+            errors=errors,
+            description_placeholders={
+                "docs_url": "https://developer.electrolux.one"
+            }
         )
-
+    
+    @staticmethod
+    @callback
+    def async_get_options_flow(config_entry: ConfigEntry) -> OptionsFlow:
+        return ElectroluxOptionsFlow()
 
 class CannotConnect(HomeAssistantError):
     """Error to indicate we cannot connect."""
 
-
-class InvalidAuth(HomeAssistantError):
+class InvalidCredentials(HomeAssistantError):
     """Error to indicate there is invalid auth."""

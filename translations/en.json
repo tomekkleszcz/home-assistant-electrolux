@@ -5,15 +5,29 @@
         },
         "error": {
             "cannot_connect": "Failed to connect",
-            "invalid_auth": "Invalid authentication",
+            "invalid_credentials": "Invalid credentials",
             "unknown": "Unexpected error"
         },
         "step": {
             "user": {
+                "title": "Electrolux Home Configuration",
+                "description": "Configure your Electrolux Home integration.\n\n**How to get your credentials:**\n1. Go to [Electrolux Developer Portal]({docs_url})\n2. Create an account and register your application\n3. Get your API Key from the dashboard\n4. Generate Access Token and Refresh Token\n\n**Scan Interval:** How often to check for device updates (in seconds). Default: 120 seconds.",
                 "data": {
-                    "host": "Host",
-                    "password": "Password",
-                    "username": "Username"
+                    "api_key": "API Key",
+                    "access_token": "Access Token",
+                    "refresh_token": "Refresh Token",
+                    "scan_interval": "Scan Interval"
+                }
+            }
+        }
+    },
+    "options": {
+        "step": {
+            "init": {
+                "title": "Electrolux Home Options",
+                "description": "Configure how often the integration should check for device updates.\n\n**Scan Interval:** Time in seconds between device state updates. Lower values mean more frequent updates but higher API usage.",
+                "data": {
+                    "scan_interval": "Scan Interval"
                 }
             }
         }

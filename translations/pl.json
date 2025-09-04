@@ -1,0 +1,35 @@
+{
+    "config": {
+        "abort": {
+            "already_configured": "Urządzenie jest już skonfigurowane"
+        },
+        "error": {
+            "cannot_connect": "Nie można połączyć",
+            "invalid_credentials": "Nieprawidłowe dane uwierzytelniające",
+            "unknown": "Nieoczekiwany błąd"
+        },
+        "step": {
+            "user": {
+                "title": "Konfiguracja Electrolux Home",
+                "description": "Skonfiguruj integrację Electrolux Home.\n\n**Jak uzyskać dane uwierzytelniające:**\n1. Przejdź do [Portalu Deweloperskiego Electrolux]({docs_url})\n2. Utwórz konto i zarejestruj swoją aplikację\n3. Pobierz Klucz API z panelu sterowania\n4. Wygeneruj Token Dostępu i Token Odświeżania\n\n**Interwał Skanowania:** Jak często sprawdzać aktualizacje urządzeń (w sekundach). Domyślnie: 120 sekund.",
+                "data": {
+                    "api_key": "Klucz API",
+                    "access_token": "Token Dostępu (Access Token)",
+                    "refresh_token": "Token Odświeżania (Refresh Token)",
+                    "scan_interval": "Interwał Skanowania"
+                }
+            }
+        }
+    },
+    "options": {
+        "step": {
+            "init": {
+                "title": "Opcje Electrolux Home",
+                "description": "Skonfiguruj jak często integracja powinna sprawdzać aktualizacje urządzeń.\n\n**Interwał Skanowania:** Czas w sekundach między aktualizacjami stanu urządzeń. Niższe wartości oznaczają częstsze aktualizacje ale wyższe użycie API.",
+                "data": {
+                    "scan_interval": "Interwał Skanowania"
+                }
+            }
+        }
+    }
+}

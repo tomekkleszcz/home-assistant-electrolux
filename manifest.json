@@ -1,16 +1,15 @@
 {
-  "domain": "electrolux",
-  "name": "Electrolux Home",
-  "codeowners": [
-    "@tomekkleszcz"
-  ],
-  "config_flow": true,
-  "dependencies": [],
-  "documentation": "https://www.home-assistant.io/integrations/electrolux",
-  "homekit": {},
-  "iot_class": "cloud_polling",
-  "quality_scale": "bronze",
-  "requirements": [],
-  "ssdp": [],
-  "zeroconf": []
+    "domain": "electrolux",
+    "name": "Electrolux Home",
+    "version": "0.0.1",
+    "codeowners": ["@tomekkleszcz"],
+    "config_flow": true,
+    "dependencies": ["climate"],
+    "documentation": "https://github.com/tomekkleszcz/home-assistant-electrolux",
+    "homekit": {},
+    "iot_class": "cloud_polling",
+    "quality_scale": "silver",
+    "requirements": ["aiohttp>=3.8.0"],
+    "ssdp": [],
+    "zeroconf": []
 }
