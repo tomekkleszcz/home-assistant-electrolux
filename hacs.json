@@ -1,20 +1,5 @@
 {
     "name": "Electrolux Home",
     "content_in_root": true,
-    "filename": "electrolux",
-    "country": [
-        "PL",
-        "US",
-        "GB",
-        "DE",
-        "FR",
-        "IT",
-        "ES",
-        "NL",
-        "SE",
-        "NO",
-        "DK",
-        "FI"
-    ],
     "homeassistant": "2025.9.0"
 }
