@@ -1,6 +1,6 @@
 {
     "name": "Electrolux Home",
-    "content_in_root": false,
+    "content_in_root": true,
     "filename": "electrolux",
     "country": [
         "PL",
