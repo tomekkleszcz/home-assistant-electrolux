@@ -26,6 +26,9 @@ async def async_setup_entry(hass: HomeAssistant, entry: ElectroluxConfigEntry) -
     store = Store(hass, version=1, key=DOMAIN)
     stored_data = await store.async_load()
 
+    # Always initialize hass.data[DOMAIN] first
+    hass.data.setdefault(DOMAIN, {})
+
     if stored_data and stored_data.get("api_key") and stored_data.get("access_token") and stored_data.get("refresh_token") and entry.data.get("api_key"):
         api_key: str = cast(str, entry.data.get("api_key"))
         access_token: str = stored_data.get("access_token")
@@ -52,7 +55,6 @@ async def async_setup_entry(hass: HomeAssistant, entry: ElectroluxConfigEntry) -
             # Store the timer so it can be cancelled later
             timer = async_track_time_interval(hass, hub.poll_appliances, timedelta(seconds=scan_interval))
 
-            hass.data.setdefault(DOMAIN, {})
             hass.data[DOMAIN][entry.entry_id] = {
                 "hub": hub,
                 "timer": timer
@@ -61,6 +63,12 @@ async def async_setup_entry(hass: HomeAssistant, entry: ElectroluxConfigEntry) -
             # If setup fails, close the API session
             await hub.close()
             raise e
+    else:
+        # If no stored data, create empty entry to prevent KeyError
+        hass.data[DOMAIN][entry.entry_id] = {
+            "hub": None,
+            "timer": None
+        }
 
     await hass.config_entries.async_forward_entry_setups(entry, _PLATFORMS)
 
