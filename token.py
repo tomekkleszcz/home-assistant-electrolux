@@ -2,6 +2,6 @@ from datetime import datetime
 from typing import Optional, TypedDict
 
 class Token(TypedDict):
-    access_token: Optional[str]
+    access_token: str
     refresh_token: str
-    token_expiration_date: Optional[datetime]
+    token_expiration_date: datetime

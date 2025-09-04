@@ -20,6 +20,7 @@ class ElectroluxHub:
         self.token = token
         self.scan_interval = scan_interval
         self.entities = []
+        self.discovered_appliances = []
         
         self.api = ElectroluxAPI(
             api_key=api_key,

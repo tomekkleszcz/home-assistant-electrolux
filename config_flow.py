@@ -53,7 +53,8 @@ async def validate_input(hass: HomeAssistant, data: dict[str, Any]) -> dict[str,
 
     return {
         "title": "Electrolux Home",
-        CONF_SCAN_INTERVAL: data[CONF_SCAN_INTERVAL]
+        CONF_SCAN_INTERVAL: data[CONF_SCAN_INTERVAL],
+        "token_expiration": token_expiration
     }
 
 class ConfigFlow(HassConfigFlow, domain=DOMAIN):
@@ -76,7 +77,8 @@ class ConfigFlow(HassConfigFlow, domain=DOMAIN):
                 data = {
                     CONF_API_KEY: user_input[CONF_API_KEY],
                     CONF_ACCESS_TOKEN: user_input[CONF_ACCESS_TOKEN],
-                    CONF_REFRESH_TOKEN: user_input[CONF_REFRESH_TOKEN]
+                    CONF_REFRESH_TOKEN: user_input[CONF_REFRESH_TOKEN],
+                    CONF_TOKEN_EXPIRATION_DATE: info["token_expiration"].isoformat()
                 }
                 options = {
                     CONF_SCAN_INTERVAL: user_input[CONF_SCAN_INTERVAL]
