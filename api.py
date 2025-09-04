@@ -113,8 +113,10 @@ class ElectroluxAPI:
 
     async def get_appliances(self) -> Optional[list[Appliance]]:
         try:
+            _LOGGER.info("Making API request to get appliances...")
             response = await self._request("GET", "/api/v1/appliances")
             data = await response.json()
+            _LOGGER.info(f"API response: {data}")
 
             appliances: list[Appliance] = []
             for item in data:
@@ -126,6 +128,7 @@ class ElectroluxAPI:
                 )
                 appliances.append(appliance)
             
+            _LOGGER.info(f"Parsed {len(appliances)} appliances from API response")
             return appliances
         except Exception as e:
             _LOGGER.error(f"Failed to get appliances: {e}")

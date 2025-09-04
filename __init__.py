@@ -91,9 +91,9 @@ async def async_unload_entry(hass: HomeAssistant, entry: ElectroluxConfigEntry) 
     if entry.entry_id in hass.data.get(DOMAIN, {}):
         entry_data = hass.data[DOMAIN][entry.entry_id]
         if isinstance(entry_data, dict):
-            if "timer" in entry_data:
+            if "timer" in entry_data and entry_data["timer"] is not None:
                 entry_data["timer"]()  # Cancel the timer
-            if "hub" in entry_data:
+            if "hub" in entry_data and entry_data["hub"] is not None:
                 await entry_data["hub"].close()  # Close API session
     
     ok = await hass.config_entries.async_unload_platforms(entry, _PLATFORMS)

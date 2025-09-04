@@ -83,9 +83,15 @@ class ElectroluxHub:
 
     async def discover_appliances(self):
         try:
+            _LOGGER.info("Starting appliance discovery...")
             self.discovered_appliances = await self.api.get_appliances()
             if not self.discovered_appliances:
+                _LOGGER.warning("No appliances discovered")
                 return []
+
+            _LOGGER.info(f"Discovered {len(self.discovered_appliances)} appliances:")
+            for appliance in self.discovered_appliances:
+                _LOGGER.info(f"  - {appliance.name} (ID: {appliance.id}, Type: {appliance.type})")
 
             return self.discovered_appliances
         except Exception as e:
