@@ -1,4 +1,5 @@
 from __future__ import annotations
+from datetime import datetime, timedelta
 from typing import Any, cast
 from ...capabilities import Capabilities, TemperatureCapability
 from homeassistant.components.climate import ClimateEntity, ClimateEntityFeature, HVACMode
@@ -13,6 +14,8 @@ from ...appliance_state import ApplianceState, ApplianceStateValue, ConnectionSt
 _LOGGER = logging.getLogger(__name__)
 
 class Climate(ClimateEntity):
+    last_turn_off_time: datetime | None = None
+
     def __init__(self, hub: ElectroluxHub, appliance: Appliance, capabilities: Capabilities, appliance_state: ApplianceState):
         self.hub = hub
         self.appliance = appliance
@@ -55,11 +58,11 @@ class Climate(ClimateEntity):
     def _update_attributes(self):
         reported = self.appliance_state.properties.reported
         
-        if reported.mode:
+        if reported.mode and reported.appliance_state == ApplianceStateValue.RUNNING:
             self._attr_hvac_mode = reported.mode.to_hvac_mode()
         else:
             self._attr_hvac_mode = HVACMode.OFF
-            
+
         self._attr_target_temperature = reported.target_temperature_c
         self._attr_current_temperature = reported.ambient_temperature_c
         
@@ -99,12 +102,18 @@ class Climate(ClimateEntity):
         self.async_write_ha_state()
 
     async def async_turn_off(self) -> None:
+        if self.appliance_state.properties.reported.appliance_state == ApplianceStateValue.OFF:
+            self.last_turn_off_time = datetime.now()
+            return
+
         success = await self.hub.api.send_command(self.appliance.id, {
             "executeCommand": "OFF"
         })
         if not success:
             self.async_write_ha_state()
             return
+
+        self.last_turn_off_time = datetime.now()
         
         self.appliance_state.properties.reported.appliance_state = ApplianceStateValue.OFF
 
@@ -132,6 +141,7 @@ class Climate(ClimateEntity):
         if not success:
             return
         
+        self.appliance_state.properties.reported.appliance_state = ApplianceStateValue.RUNNING
         self.appliance_state.properties.reported.mode = Mode.from_hvac_mode(hvac_mode)
         
         self._attr_hvac_mode = hvac_mode
@@ -139,6 +149,10 @@ class Climate(ClimateEntity):
         self.async_write_ha_state()
 
     async def async_set_temperature(self, **kwargs: Any) -> None:
+        if self.last_turn_off_time and datetime.now() - self.last_turn_off_time < timedelta(seconds=1):
+            self.async_write_ha_state()
+            return
+
         success = await self.hub.api.send_command(self.appliance.id, {
             "targetTemperatureC": kwargs["temperature"]
         })
@@ -155,6 +169,10 @@ class Climate(ClimateEntity):
         pass
 
     async def async_set_preset_mode(self, preset_mode: str) -> None:
+        if self.appliance_state.properties.reported.appliance_state == ApplianceStateValue.OFF:
+            self.async_write_ha_state()
+            return
+
         locked = preset_mode == "Locked"
 
         success = await self.hub.api.send_command(self.appliance.id, {
@@ -170,6 +188,10 @@ class Climate(ClimateEntity):
         self.async_write_ha_state()
 
     async def async_set_swing_mode(self, swing_mode: str) -> None:
+        if self.appliance_state.properties.reported.appliance_state == ApplianceStateValue.OFF:
+            self.async_write_ha_state()
+            return
+
         enabled = swing_mode == "on"
 
         success = await self.hub.api.send_command(self.appliance.id, {
