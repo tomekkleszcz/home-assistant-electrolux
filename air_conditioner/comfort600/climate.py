@@ -95,7 +95,7 @@ class Climate(ClimateEntity):
             self.async_write_ha_state()
             return
 
-        print("TURN ON")
+        _LOGGER.info("TURN ON")
 
         self.appliance_state.properties.reported.appliance_state = ApplianceStateValue.RUNNING
 
@@ -104,7 +104,7 @@ class Climate(ClimateEntity):
         self.async_write_ha_state()
 
     async def async_turn_off(self) -> None:
-        print("turn off", self.appliance_state.properties.reported.appliance_state)
+        _LOGGER.info("turn off", self.appliance_state.properties.reported.appliance_state)
 
         if self.appliance_state.properties.reported.appliance_state == ApplianceStateValue.OFF:
             self.last_turn_off_time = datetime.now()
@@ -126,7 +126,7 @@ class Climate(ClimateEntity):
         self.async_write_ha_state()
 
     async def async_set_hvac_mode(self, hvac_mode: HVACMode) -> None:
-        print("set hvac mode", hvac_mode)
+        _LOGGER.info("set hvac mode", hvac_mode)
 
         if hvac_mode == HVACMode.OFF:
             await self.async_turn_off()
@@ -140,7 +140,7 @@ class Climate(ClimateEntity):
             case _:
                 mode = "AUTO"
 
-        print("SET HVAC MODE")
+        _LOGGER.info("SET HVAC MODE")
 
         success = await self.hub.api.send_command(self.appliance.id, {
             "executeCommand": "ON",
@@ -157,17 +157,17 @@ class Climate(ClimateEntity):
         self.async_write_ha_state()
 
     async def async_set_temperature(self, **kwargs: Any) -> None:
-        print("set temperature", kwargs)
+        _LOGGER.info("set temperature", kwargs)
         if self.last_turn_off_time:
-            print("delta", datetime.now() - self.last_turn_off_time)
+            _LOGGER.info("delta", datetime.now() - self.last_turn_off_time)
         else:
-            print("delta none")
+            _LOGGER.info("delta none")
 
         if self.last_turn_off_time and datetime.now() - self.last_turn_off_time < timedelta(seconds=1):
             self.async_write_ha_state()
             return
 
-        print("SET TEMPERATURE")
+        _LOGGER.info("SET TEMPERATURE")
 
         success = await self.hub.api.send_command(self.appliance.id, {
             "targetTemperatureC": kwargs["temperature"]
@@ -191,7 +191,7 @@ class Climate(ClimateEntity):
 
         locked = preset_mode == "Locked"
 
-        print("SET PRESET MODE", preset_mode)
+        _LOGGER.info("SET PRESET MODE", preset_mode)
 
         success = await self.hub.api.send_command(self.appliance.id, {
             "uiLockMode": locked
@@ -212,7 +212,7 @@ class Climate(ClimateEntity):
 
         enabled = swing_mode == "on"
 
-        print("SET SWING MODE", swing_mode)
+        _LOGGER.info("SET SWING MODE", swing_mode)
 
         success = await self.hub.api.send_command(self.appliance.id, {
             "verticalSwing": "ON" if enabled else "OFF"
