@@ -1,5 +1,6 @@
 from __future__ import annotations
 from datetime import datetime, timedelta
+import asyncio
 from typing import Any, cast
 from ...capabilities import Capabilities, TemperatureCapability
 from homeassistant.components.climate import ClimateEntity, ClimateEntityFeature, HVACMode
@@ -48,6 +49,11 @@ class Climate(ClimateEntity):
             self._attr_swing_modes = None
         
         self._attr_should_poll = False
+        
+        # Debounce state for temperature setting
+        self._temperature_debounce_task: asyncio.Task | None = None
+        self._pending_target_temperature: float | None = None
+        self._temperature_debounce_delay_seconds: float = 1.0
         
         self._update_attributes()
 
@@ -163,26 +169,52 @@ class Climate(ClimateEntity):
         else:
             _LOGGER.info("delta none")
 
-        if self.last_turn_off_time and datetime.now() - self.last_turn_off_time < timedelta(seconds=1):
+        temperature = kwargs["temperature"]
+
+        # Debounce: schedule the command after a short delay, cancelling any previous attempt
+        self._pending_target_temperature = float(temperature)
+        if self._temperature_debounce_task and not self._temperature_debounce_task.done():
+            self._temperature_debounce_task.cancel()
+
+        self._temperature_debounce_task = self.hass.async_create_task(self._perform_debounced_temperature_send())
+
+    async def _perform_debounced_temperature_send(self) -> None:
+        try:
+            await asyncio.sleep(self._temperature_debounce_delay_seconds)
+
+            temperature = self._pending_target_temperature
+            if temperature is None:
+                return
+
+            # Ensure at least 1s passed since last turn off, if applicable
+            if self.last_turn_off_time:
+                delta = datetime.now() - self.last_turn_off_time
+                if delta < timedelta(seconds=1):
+                    await asyncio.sleep((timedelta(seconds=1) - delta).total_seconds())
+
+            _LOGGER.info("SET TEMPERATURE (debounced)")
+
+            success = await self.hub.api.send_command(self.appliance.id, {
+                "targetTemperatureC": temperature
+            })
+            if not success:
+                return
+
+            # Update state and attributes only after request succeeds
+            self.appliance_state.properties.reported.appliance_state = ApplianceStateValue.RUNNING
+            self.appliance_state.properties.reported.target_temperature_c = temperature
+            self._attr_hvac_mode = (
+                self.appliance_state.properties.reported.mode.to_hvac_mode()
+                if self.appliance_state.properties.reported.mode
+                else HVACMode.AUTO
+            )
+            self._attr_target_temperature = temperature
             self.async_write_ha_state()
+        except asyncio.CancelledError:
+            # Debounced by a newer request; safe to ignore
             return
-
-        _LOGGER.info("SET TEMPERATURE")
-
-        success = await self.hub.api.send_command(self.appliance.id, {
-            "targetTemperatureC": kwargs["temperature"]
-        })
-        if not success:
-            return
-        
-        self.appliance_state.properties.reported.appliance_state = ApplianceStateValue.RUNNING
-        self.appliance_state.properties.reported.target_temperature_c = kwargs["temperature"]
-        
-        self._attr_hvac_mode = self.appliance_state.properties.reported.mode.to_hvac_mode() if self.appliance_state.properties.reported.mode else HVACMode.AUTO
-        self._attr_target_temperature = kwargs["temperature"]
-        
-        self.async_write_ha_state()
-        pass
+        finally:
+            self._temperature_debounce_task = None
 
     async def async_set_preset_mode(self, preset_mode: str) -> None:
         if self.appliance_state.properties.reported.appliance_state == ApplianceStateValue.OFF:
