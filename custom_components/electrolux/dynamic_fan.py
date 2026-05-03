@@ -132,6 +132,8 @@ class DynamicFan(DynamicElectroluxEntity, FanEntity):
         **kwargs: Any,
     ) -> None:
         success = True
+        if percentage is None and self.workmode_path is None and self.fan_speed_path is not None:
+            percentage = self._attr_percentage or 100
         if self.workmode_path:
             workmode = self._workmode_for_speed(preset_mode) if percentage is not None else preset_mode or self._last_active_mode
             success = await self.send_capability(self.workmode_path, workmode)
@@ -148,7 +150,10 @@ class DynamicFan(DynamicElectroluxEntity, FanEntity):
             speed_capability = self.capability(self.fan_speed_path)
             if speed_capability is None or not speed_capability.can_write:
                 return
-            if await self.send_capability(self.fan_speed_path, self._fan_speed_off_value()):
+            off_value = self._fan_speed_off_value()
+            if off_value is None:
+                return
+            if await self.send_capability(self.fan_speed_path, off_value):
                 self._update_attributes()
                 self.async_write_ha_state()
             return
@@ -187,11 +192,12 @@ class DynamicFan(DynamicElectroluxEntity, FanEntity):
         except (TypeError, ValueError):
             return 0
 
-    def _fan_speed_off_value(self) -> int:
+    def _fan_speed_off_value(self) -> int | None:
         capability = self.capability(self.fan_speed_path)
-        if capability is not None and capability.min is not None and int(capability.min) <= 0:
-            return int(capability.min)
-        return 0
+        if capability is None:
+            return 0
+        min_speed = int(capability.min or 0)
+        return min_speed if min_speed <= 0 else None
 
     def _fan_speed_from_percentage(self, percentage: int) -> int:
         capability = self.capability(self.fan_speed_path)
