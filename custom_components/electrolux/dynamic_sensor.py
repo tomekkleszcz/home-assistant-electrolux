@@ -30,7 +30,7 @@ def sensor_entities(hub: ElectroluxHub) -> list[SensorEntity]:
         added_paths: set[str] = set()
         added_sensor_ids: set[str] = set()
         for capability in runtime_capabilities.values():
-            if capability.path in consumed or not capability.access.can_read or capability.access.can_write:
+            if capability.path in consumed or not capability.can_read or capability.can_write:
                 continue
             metadata = _sensor_metadata(capability)
             diagnostic = metadata is None
