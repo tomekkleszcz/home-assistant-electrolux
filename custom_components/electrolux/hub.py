@@ -9,8 +9,9 @@ from homeassistant.helpers.storage import Store
 from .api import ElectroluxAPI
 from typing import Optional, Any
 from .appliance_state import ApplianceState, ConnectionState, update_reported_property
+from .capabilities import Capability, command_body_for_capability
 from .token import Token
-from .api import Appliance
+from .appliance import Appliance, ApplianceData
 
 
 _LOGGER = logging.getLogger(__name__)
@@ -35,6 +36,7 @@ class ElectroluxHub:
         self._use_livestream_updates = use_livestream_updates
         self.entities = []
         self.discovered_appliances: list[Appliance] = []
+        self.discovered_appliance_data: dict[str, ApplianceData] = {}
         self._livestream_task: asyncio.Task[None] | None = None
         self._livestream_supported_properties_loaded = False
         self._livestream_supported_properties_by_appliance: dict[str, set[str]] = {}
@@ -82,6 +84,72 @@ class ElectroluxHub:
             if filtered_expected_livestream := self._filter_livestream_echo_body(appliance_id, expected_livestream):
                 self.register_livestream_command_echo_filter(appliance_id, filtered_expected_livestream)
         return success
+
+    async def send_capability_command(
+        self,
+        appliance_id: str,
+        capability_path: str,
+        value: Any,
+        *,
+        expected_livestream: dict[str, Any] | None = None,
+    ) -> bool:
+        appliance_data = self.discovered_appliance_data.get(appliance_id)
+        if appliance_data is None:
+            _LOGGER.debug("Ignoring command for unknown appliance %s capability %s", appliance_id, capability_path)
+            return False
+
+        runtime_capability = self.runtime_capability(appliance_id, capability_path)
+        if runtime_capability is None or not runtime_capability.can_write:
+            _LOGGER.debug(
+                "Ignoring command for unavailable capability %s on appliance %s",
+                capability_path,
+                appliance_id,
+            )
+            return False
+        if not self._is_capability_value_allowed(runtime_capability, value):
+            _LOGGER.debug(
+                "Ignoring command for capability %s on appliance %s because value is outside capabilities: %s",
+                capability_path,
+                appliance_id,
+                value,
+            )
+            return False
+
+        body = command_body_for_capability(runtime_capability, value, is_dam=appliance_data.is_dam)
+        success = await self.send_command(appliance_id, body, expected_livestream=expected_livestream)
+        if success:
+            appliance_data.state.set_reported(capability_path, value)
+        return success
+
+    def _is_capability_value_allowed(self, capability: Capability, value: Any) -> bool:
+        if capability.values:
+            normalized_values = {self._normalize_capability_value(allowed) for allowed in capability.values}
+            return self._normalize_capability_value(value) in normalized_values
+
+        if capability.is_numeric:
+            try:
+                numeric_value = float(value)
+            except (TypeError, ValueError):
+                return False
+            if capability.min is not None and numeric_value < float(capability.min):
+                return False
+            if capability.max is not None and numeric_value > float(capability.max):
+                return False
+            if capability.step not in (None, 0) and capability.min is not None:
+                offset = (numeric_value - float(capability.min)) / float(capability.step)
+                if abs(offset - round(offset)) > 1e-6:
+                    return False
+        return True
+
+    def _normalize_capability_value(self, value: Any) -> str:
+        return str(value).strip().replace("_", "").replace(" ", "").upper()
+
+    def runtime_capability(self, appliance_id: str, capability_path: str) -> Capability | None:
+        appliance_data = self.discovered_appliance_data.get(appliance_id)
+        if appliance_data is None:
+            return None
+        runtime_capabilities = appliance_data.info.runtime_capabilities(appliance_data.state.properties.reported.raw)
+        return runtime_capabilities.get(capability_path)
 
     def _filter_livestream_echo_body(
         self,
@@ -172,6 +240,8 @@ class ElectroluxHub:
             try:
                 if hasattr(entity, 'appliance_state'):
                     entity.appliance_state = state
+                if hasattr(entity, 'appliance_data') and entity.appliance_id in self.discovered_appliance_data:
+                    entity.appliance_data = self.discovered_appliance_data[entity.appliance_id]
 
                 if hasattr(entity, '_update_attributes'):
                     entity._update_attributes()
@@ -197,21 +267,25 @@ class ElectroluxHub:
             return True
 
         livestream_properties = getattr(entity, "livestream_properties", None)
-        return livestream_properties is None or changed_property in livestream_properties
+        if livestream_properties is None or changed_property in livestream_properties:
+            return True
+        changed_leaf = changed_property.rsplit(".", 1)[-1]
+        return any(prop.rsplit(".", 1)[-1] == changed_leaf for prop in livestream_properties)
 
     async def poll_appliances(self, _: datetime):
         _LOGGER.info("Polling appliances")
 
         try:
-            if not self.discovered_appliances:
+            if not self.discovered_appliance_data:
                 return
 
-            for appliance in self.discovered_appliances:
-                state = await self.api.get_appliance_state(appliance.id)
+            for appliance_data in self.discovered_appliance_data.values():
+                state = await self.api.get_appliance_state(appliance_data.appliance.id)
                 if not state:
                     continue
 
-                await self._update_entities_for_appliance(appliance.id, state, call_async_update=True)
+                appliance_data.state = state
+                await self._update_entities_for_appliance(appliance_data.appliance.id, state, call_async_update=True)
         except Exception as e:
             _LOGGER.error(f"Error during periodic update: {e}")
 
@@ -311,11 +385,11 @@ class ElectroluxHub:
             )
             return
 
+        property_path = self._resolve_property_path(appliance_id, property_name)
         reported = state.properties.reported
-        previous_workmode = reported.workmode
-        previous_fan_speed = reported.fan_speed
+        previous_value = reported.get(property_path)
 
-        if not update_reported_property(reported, property_name, value):
+        if not update_reported_property(reported, property_path, value):
             _LOGGER.debug(
                 "Ignoring livestream event for unknown property %s on appliance %s; value=%s",
                 property_name,
@@ -324,23 +398,36 @@ class ElectroluxHub:
             )
             return
 
+        if appliance_data := self.discovered_appliance_data.get(appliance_id):
+            appliance_data.state = state
+
         _LOGGER.debug(
-            "Applied livestream event for appliance %s: %s=%s; workmode %s -> %s; fan_speed %s -> %s",
+            "Applied livestream event for appliance %s: %s %s -> %s",
             appliance_id,
-            property_name,
+            property_path,
+            previous_value,
             value,
-            previous_workmode,
-            reported.workmode,
-            previous_fan_speed,
-            reported.fan_speed,
         )
 
         await self._update_entities_for_appliance(
             appliance_id,
             state,
             call_async_update=False,
-            changed_property=property_name,
+            changed_property=property_path,
         )
+
+    def _resolve_property_path(self, appliance_id: str, property_name: str) -> str:
+        appliance_data = self.discovered_appliance_data.get(appliance_id)
+        if appliance_data is None:
+            return property_name
+        if property_name in appliance_data.info.capabilities:
+            return property_name
+        matches = [
+            capability.path
+            for capability in appliance_data.info.capabilities.values()
+            if capability.name == property_name or capability.path.rsplit(".", 1)[-1] == property_name
+        ]
+        return matches[0] if matches else property_name
 
     def _get_entity_appliance_state(self, appliance_id: str) -> ApplianceState | None:
         for entity in self.entities:
@@ -353,11 +440,15 @@ class ElectroluxHub:
     def get_discovered_appliances(self) -> list[Appliance]:
         return self.discovered_appliances
 
+    def get_discovered_appliance_data(self) -> list[ApplianceData]:
+        return list(self.discovered_appliance_data.values())
+
     async def discover_appliances(self):
         try:
             _LOGGER.info("Starting appliance discovery...")
             appliances = await self.api.get_appliances() or []
             self.discovered_appliances = appliances
+            self.discovered_appliance_data = {}
             if not appliances:
                 _LOGGER.warning("No appliances discovered")
                 return []
@@ -365,11 +456,22 @@ class ElectroluxHub:
             _LOGGER.info(f"Discovered {len(appliances)} appliances:")
             for appliance in appliances:
                 _LOGGER.info(f"  - {appliance.name} (ID: {appliance.id}, Type: {appliance.type})")
+                info = await self.api.get_appliance_info(appliance.id)
+                state = await self.api.get_appliance_state(appliance.id)
+                if info is None or state is None:
+                    _LOGGER.warning("Skipping appliance %s because info or state is unavailable", appliance.id)
+                    continue
+                self.discovered_appliance_data[appliance.id] = ApplianceData(
+                    appliance=appliance,
+                    info=info,
+                    state=state,
+                )
 
             return appliances
         except Exception as e:
             _LOGGER.error(f"Failed to discover appliances: {e}")
             self.discovered_appliances = []
+            self.discovered_appliance_data = {}
             return []
     
     def add_entities(self, entities: list[Any]):

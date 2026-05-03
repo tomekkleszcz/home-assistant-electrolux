@@ -25,7 +25,14 @@ from .jwt_utils import get_token_expiration
 
 _LOGGER = logging.getLogger(__name__)
 
-_PLATFORMS: list[Platform] = [Platform.CLIMATE, Platform.FAN, Platform.SENSOR]
+_PLATFORMS: list[Platform] = [
+    Platform.CLIMATE,
+    Platform.FAN,
+    Platform.NUMBER,
+    Platform.SELECT,
+    Platform.SENSOR,
+    Platform.SWITCH,
+]
 
 class ElectroluxConfigData(TypedDict):
     scan_interval: int

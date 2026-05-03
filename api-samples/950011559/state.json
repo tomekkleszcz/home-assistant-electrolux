@@ -1,0 +1,52 @@
+{
+  "applianceId": "sample-air-purifier-1",
+  "connectionState": "Connected",
+  "properties": {
+    "reported": {
+      "ECO2": 748,
+      "ErrCommSensorUIBrd": "not active",
+      "ErrGasNotResp": "not active",
+      "ErrImpellerStuck": "not active",
+      "ErrNfcTagNotPres_1": "was active",
+      "ErrNfcTagNotPres_2": "not active",
+      "ErrNfcTagPresNotValid_1": "not active",
+      "ErrNfcTagPresNotValid_2": "not active",
+      "ErrNfcTransceiver_1": "not active",
+      "ErrNfcTransceiver_2": "not active",
+      "ErrPmNotResp": "not active",
+      "ErrTempRhNotResp": "not active",
+      "Fanspeed": 1,
+      "FilterLife_1": 0,
+      "FilterLife_2": 0,
+      "FilterType_1": 49,
+      "FilterType_2": 192,
+      "FrmVer_NIU": "1.30.0",
+      "Humidity": 40,
+      "InterfaceVer": 20210119,
+      "Ionizer": true,
+      "Model": "A7",
+      "PM1": 3,
+      "PM10": 4,
+      "PM2_5": 4,
+      "PMSensState": true,
+      "SafetyLock": false,
+      "SchedulingState": "not set",
+      "SignalStrength": "EXCELLENT",
+      "State": "standBy",
+      "TVOC": 3733,
+      "Temp": 24,
+      "UILight": true,
+      "VmNo_MCU": "VM174_A_01.04.00",
+      "VmNo_NIU": "VM185_A_01.30.00_ASPEN",
+      "Workmode": "Auto",
+      "capabilities": {
+        "tasks": {}
+      },
+      "deviceId": "sample-air-purifier-1",
+      "logE": 0,
+      "logW": 2011,
+      "tasks": {}
+    }
+  },
+  "status": "enabled"
+}

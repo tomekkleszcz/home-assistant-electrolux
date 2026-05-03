@@ -33,5 +33,35 @@
                 }
             }
         }
+    },
+    "entity": {
+        "sensor": {
+            "temperature": {
+                "name": "Temperature"
+            },
+            "humidity": {
+                "name": "Humidity"
+            },
+            "tvoc": {
+                "name": "TVOC"
+            },
+            "co2": {
+                "name": "CO2"
+            },
+            "eco2": {
+                "name": "eCO2"
+            }
+        },
+        "switch": {
+            "ionizer": {
+                "name": "Ionizer"
+            },
+            "safety_lock": {
+                "name": "Safety Lock"
+            },
+            "ui_light": {
+                "name": "UI Light"
+            }
+        }
     }
 }

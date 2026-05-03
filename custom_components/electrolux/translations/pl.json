@@ -39,5 +39,35 @@
                 }
             }
         }
+    },
+    "entity": {
+        "sensor": {
+            "temperature": {
+                "name": "Temperatura"
+            },
+            "humidity": {
+                "name": "Wilgotność"
+            },
+            "tvoc": {
+                "name": "TVOC"
+            },
+            "co2": {
+                "name": "CO2"
+            },
+            "eco2": {
+                "name": "eCO2"
+            }
+        },
+        "switch": {
+            "ionizer": {
+                "name": "Jonizator"
+            },
+            "safety_lock": {
+                "name": "Blokada dziecięca"
+            },
+            "ui_light": {
+                "name": "Lampka jakości powietrza"
+            }
+        }
     }
 }

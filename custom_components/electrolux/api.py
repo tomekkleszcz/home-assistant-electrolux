@@ -9,7 +9,7 @@ from urllib.parse import urlparse
 
 from .capabilities import ApplianceInfo, capabilities_from_json
 
-from .appliance_state import ApplianceState, ApplianceStateValue, ConnectionState, FanSpeedSetting, FilterType, Mode, Properties, ReportedProperties, State, Status, TemperatureRepresentation, Toggle, Workmode
+from .appliance_state import ApplianceState, ConnectionState, Properties, ReportedProperties, Status
 
 from .appliance import Appliance
 from .const import API_HOST
@@ -271,49 +271,16 @@ class ElectroluxAPI:
             data = await response.json()
 
             reported = data.get("properties", {}).get("reported", {})
+            if not isinstance(reported, dict):
+                reported = {}
 
             return ApplianceState(
                 id=data["applianceId"],
                 connectionState=ConnectionState.from_string(data["connectionState"]),
                 status=Status.from_string(data["status"]),
-                properties=Properties(
-                    reported=ReportedProperties(
-                        appliance_state=ApplianceStateValue.from_string(reported.get("applianceState")),
-                        temperature_representation=TemperatureRepresentation.from_string(reported.get("temperatureRepresentation")),
-                        sleep_mode=Toggle.from_string(reported.get("sleepMode")),
-                        target_temperature_c=reported.get("targetTemperatureC"),
-                        ui_lock_mode=reported.get("uiLockMode"),
-                        mode=Mode.from_string(reported.get("mode")),
-                        fan_speed_setting=FanSpeedSetting.from_string(reported.get("fanSpeedSetting")),
-                        vertical_swing=Toggle.from_string(reported.get("verticalSwing")),
-                        filter_state=State.from_string(reported.get("filterState")),
-                        ambient_temperature_c=reported.get("ambientTemperatureC"),
-
-                        workmode=Workmode.from_string(reported.get("Workmode")),
-                        fan_speed=reported.get("Fanspeed"),
-                        filter_life_1=reported.get("FilterLife_1"),
-                        filter_type_1=FilterType.from_int(reported.get("FilterType_1")),
-                        filter_life_2=reported.get("FilterLife_2"),
-                        filter_type_2=FilterType.from_int(reported.get("FilterType_2")),
-
-                        ionizer=reported.get("Ionizer"),
-                        ui_light=reported.get("UILight"),
-                        safety_lock=reported.get("SafetyLock"),
-                        pm_1=reported.get("PM1"),
-                        pm_2_5=reported.get("PM2_5"),
-                        pm_10=reported.get("PM10"),
-                        temperature=reported.get("Temp"),
-                        humidity=reported.get("Humidity"),
-                        tvoc=reported.get("TVOC"),
-                        
-                        eco2=reported.get("ECO2"),
-                        
-                        co2=reported.get("CO2"),
-
-                        uv_state=Toggle.from_string(reported.get("UVState")),
-                        pm_2_5_approximate=reported.get("PM2_5_Approximate"),
-                    )
-                )
+                properties=Properties(reported=ReportedProperties(raw=reported)),
+                data_model_version=data.get("properties", {}).get("dataModelVersion") or data.get("dataModelVersion"),
+                raw=data,
             )
         except Exception as e:
             _LOGGER.error(f"Failed to get appliance state: {e}")
