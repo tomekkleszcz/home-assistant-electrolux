@@ -176,10 +176,13 @@ class DynamicFan(DynamicElectroluxEntity, FanEntity):
             return percentage
         min_speed = int(capability.min or 0)
         max_speed = int(capability.max or 100)
+        step = max(int(capability.step or 1), 1)
         min_percentage = _percentage_from_speed(min_speed, max_speed) if min_speed > 0 else 0
         percentage = max(percentage, min_percentage)
         computed = round(max_speed * (percentage / 100))
-        return min(max(computed, min_speed), max_speed)
+        snapped_steps = int(((computed - min_speed) / step) + 0.5)
+        snapped = min_speed + (snapped_steps * step)
+        return min(max(snapped, min_speed), max_speed)
 
     def _workmode_for_speed(self, preset_mode: str | None) -> str:
         for value in (preset_mode, self._last_active_mode, *self._writable_workmode_values()):

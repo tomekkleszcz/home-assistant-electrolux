@@ -39,7 +39,9 @@ class DynamicClimate(DynamicElectroluxEntity, ClimateEntity):
         self._attr_unique_id = f"electrolux_climate_{self.appliance.id}"
         self._attr_name = self.appliance.name
         self._attr_temperature_unit = UnitOfTemperature.CELSIUS
+        self._update_attributes()
 
+    def _recompute_capability_controls(self) -> None:
         runtime_capabilities = self.info.runtime_capabilities(self.appliance_state.properties.reported.raw)
         self.power_path = _find_capability_path(self.info, runtime_capabilities, "executeCommand")
         self.state_path = _find_capability_path(self.info, runtime_capabilities, "applianceState")
@@ -77,24 +79,40 @@ class DynamicClimate(DynamicElectroluxEntity, ClimateEntity):
         self.is_supported = self.target_temperature_path is not None or self.mode_path is not None or self.power_path is not None
 
         self._attr_supported_features = ClimateEntityFeature.TURN_ON | ClimateEntityFeature.TURN_OFF
-        if self.target_temperature_path:
-            self._attr_supported_features |= ClimateEntityFeature.TARGET_TEMPERATURE
-            capability = runtime_capabilities[self.target_temperature_path]
-            if capability.min is not None:
-                self._attr_min_temp = capability.min
-            if capability.max is not None:
-                self._attr_max_temp = capability.max
-            if capability.step is not None:
-                self._attr_target_temperature_step = capability.step
-        if self.fan_mode_path:
+        target_capability = runtime_capabilities.get(self.target_temperature_path) if self.target_temperature_path else None
+        if target_capability is not None:
+            if target_capability.can_write:
+                self._attr_supported_features |= ClimateEntityFeature.TARGET_TEMPERATURE
+            self._set_or_clear_attr("_attr_min_temp", target_capability.min)
+            self._set_or_clear_attr("_attr_max_temp", target_capability.max)
+            self._set_or_clear_attr("_attr_target_temperature_step", target_capability.step)
+        else:
+            self._set_or_clear_attr("_attr_min_temp", None)
+            self._set_or_clear_attr("_attr_max_temp", None)
+            self._set_or_clear_attr("_attr_target_temperature_step", None)
+
+        fan_capability = runtime_capabilities.get(self.fan_mode_path) if self.fan_mode_path else None
+        if fan_capability is not None and fan_capability.can_write:
             self._attr_supported_features |= ClimateEntityFeature.FAN_MODE
-            self._attr_fan_modes = list(runtime_capabilities[self.fan_mode_path].values)
-        if self.swing_path:
+            self._attr_fan_modes = list(fan_capability.values)
+        else:
+            self._attr_fan_modes = None
+
+        swing_capability = runtime_capabilities.get(self.swing_path) if self.swing_path else None
+        if swing_capability is not None and swing_capability.can_write:
             self._attr_supported_features |= ClimateEntityFeature.SWING_MODE
-            self._attr_swing_modes = _on_off_options(runtime_capabilities[self.swing_path])
+            self._attr_swing_modes = _on_off_options(swing_capability)
+        else:
+            self._attr_swing_modes = None
 
         self._attr_hvac_modes = self._hvac_modes(runtime_capabilities)
-        self._update_attributes()
+
+    def _set_or_clear_attr(self, attr: str, value: Any) -> None:
+        if value is None:
+            if hasattr(self, attr):
+                delattr(self, attr)
+            return
+        setattr(self, attr, value)
 
     def _hvac_modes(self, runtime_capabilities: dict[str, Capability]) -> list[HVACMode]:
         modes = [HVACMode.OFF]
@@ -110,6 +128,7 @@ class DynamicClimate(DynamicElectroluxEntity, ClimateEntity):
         return modes
 
     def _update_attributes(self) -> None:
+        self._recompute_capability_controls()
         running = _is_running(self.state_value(self.state_path))
         mode = _hvac_mode_from_api(self.state_value(self.mode_path))
         self._attr_hvac_mode = mode if running and mode else (HVACMode.AUTO if running else HVACMode.OFF)
@@ -119,6 +138,7 @@ class DynamicClimate(DynamicElectroluxEntity, ClimateEntity):
         self._attr_swing_mode = _on_off_state(self.state_value(self.swing_path))
 
     async def async_turn_on(self) -> None:
+        self._recompute_capability_controls()
         if self.power_path:
             value = _capability_value(self.capability(self.power_path), ON_VALUES, "ON")
             success = await self.send_capability(self.power_path, value)
@@ -131,6 +151,7 @@ class DynamicClimate(DynamicElectroluxEntity, ClimateEntity):
             self.async_write_ha_state()
 
     async def async_turn_off(self) -> None:
+        self._recompute_capability_controls()
         if self.power_path:
             value = _capability_value(self.capability(self.power_path), OFF_VALUES, "OFF")
             success = await self.send_capability(self.power_path, value)
@@ -143,6 +164,7 @@ class DynamicClimate(DynamicElectroluxEntity, ClimateEntity):
             self.async_write_ha_state()
 
     async def async_set_hvac_mode(self, hvac_mode: HVACMode) -> None:
+        self._recompute_capability_controls()
         if hvac_mode == HVACMode.OFF:
             await self.async_turn_off()
             return
@@ -155,6 +177,7 @@ class DynamicClimate(DynamicElectroluxEntity, ClimateEntity):
                 self.async_write_ha_state()
 
     async def async_set_temperature(self, **kwargs: Any) -> None:
+        self._recompute_capability_controls()
         if self.target_temperature_path is None or "temperature" not in kwargs:
             return
         if await self.send_capability(self.target_temperature_path, kwargs["temperature"]):
@@ -162,11 +185,13 @@ class DynamicClimate(DynamicElectroluxEntity, ClimateEntity):
             self.async_write_ha_state()
 
     async def async_set_fan_mode(self, fan_mode: str) -> None:
+        self._recompute_capability_controls()
         if self.fan_mode_path and await self.send_capability(self.fan_mode_path, fan_mode):
             self._update_attributes()
             self.async_write_ha_state()
 
     async def async_set_swing_mode(self, swing_mode: str) -> None:
+        self._recompute_capability_controls()
         if self.swing_path is None:
             return
         value = _capability_value(self.capability(self.swing_path), ON_VALUES if swing_mode == "on" else OFF_VALUES, swing_mode)

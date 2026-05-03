@@ -28,6 +28,7 @@ def sensor_entities(hub: ElectroluxHub) -> list[SensorEntity]:
         consumed = _main_entity_consumed_paths(appliance_data)
         runtime_capabilities = appliance_data.info.runtime_capabilities(appliance_data.state.properties.reported.raw)
         added_paths: set[str] = set()
+        added_sensor_ids: set[str] = set()
         for capability in runtime_capabilities.values():
             if capability.path in consumed or not capability.access.can_read or capability.access.can_write:
                 continue
@@ -35,9 +36,14 @@ def sensor_entities(hub: ElectroluxHub) -> list[SensorEntity]:
             diagnostic = metadata is None
             entities.append(DynamicSensor(hub, appliance_data, capability.path, metadata, diagnostic))
             added_paths.add(capability.path)
+            added_sensor_ids.add(_sensor_unique_id(appliance_data.appliance.id, capability.path))
         for path in _reported_sensor_paths(appliance_data, runtime_capabilities, consumed | added_paths):
+            sensor_id = _sensor_unique_id(appliance_data.appliance.id, path)
+            if sensor_id in added_sensor_ids:
+                continue
             metadata = _sensor_metadata_for_path(path)
             entities.append(DynamicSensor(hub, appliance_data, path, metadata, diagnostic=False))
+            added_sensor_ids.add(sensor_id)
     return entities
 
 
@@ -141,6 +147,12 @@ def _known_sensor_unique_id(appliance_id: str, capability_path: str) -> str | No
     }
     suffix = mapping.get(capability_path.rsplit(".", 1)[-1])
     return f"electrolux_{suffix}_{appliance_id}" if suffix else None
+
+
+def _sensor_unique_id(appliance_id: str, capability_path: str) -> str:
+    return _known_sensor_unique_id(appliance_id, capability_path) or (
+        f"electrolux_sensor_{appliance_id}_{_safe_id(capability_path)}"
+    )
 
 
 def _reported_sensor_paths(

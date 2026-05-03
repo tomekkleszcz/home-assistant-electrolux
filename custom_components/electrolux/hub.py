@@ -422,12 +422,19 @@ class ElectroluxHub:
             return property_name
         if property_name in appliance_data.info.capabilities:
             return property_name
-        matches = [
+        exact_name_matches = [
             capability.path
             for capability in appliance_data.info.capabilities.values()
-            if capability.name == property_name or capability.path.rsplit(".", 1)[-1] == property_name
+            if capability.name == property_name
         ]
-        return matches[0] if matches else property_name
+        if len(exact_name_matches) == 1:
+            return exact_name_matches[0]
+        leaf_matches = [
+            capability.path
+            for capability in appliance_data.info.capabilities.values()
+            if capability.path.rsplit(".", 1)[-1] == property_name
+        ]
+        return leaf_matches[0] if len(leaf_matches) == 1 else property_name
 
     def _get_entity_appliance_state(self, appliance_id: str) -> ApplianceState | None:
         for entity in self.entities:

@@ -24,5 +24,6 @@ class ApplianceData:
         return (
             self.appliance.id.startswith("1:")
             or self.appliance.type.upper().startswith("DAM_")
-            or bool(self.info.data_model_version or self.state.data_model_version)
+            or self.info.data_model_version is not None
+            or self.state.data_model_version is not None
         )
