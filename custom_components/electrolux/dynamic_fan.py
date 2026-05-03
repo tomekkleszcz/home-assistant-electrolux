@@ -178,7 +178,7 @@ class DynamicFan(DynamicElectroluxEntity, FanEntity):
         current = self.state_value(self.workmode_path)
         if current and not _is_off_value(current):
             self._last_active_mode = current
-        value = _capability_value(workmode_capability, OFF_VALUES + ("PowerOff", "POWER_OFF"), "PowerOff")
+        value = _capability_value(workmode_capability, (*OFF_VALUES, "PowerOff", "POWER_OFF"), "PowerOff")
         if await self.send_capability(self.workmode_path, value):
             await self._async_turn_off_safety_lock()
             self._update_attributes()
