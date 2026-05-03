@@ -78,14 +78,18 @@ class DynamicFan(DynamicElectroluxEntity, FanEntity):
             self._attr_percentage = _percentage_from_speed(speed_value, max_speed)
 
     def _update_supported_features(self) -> None:
-        supported_features = FanEntityFeature.TURN_ON | FanEntityFeature.TURN_OFF
+        supported_features = FanEntityFeature.TURN_ON
         speed_capability = self.capability(self.fan_speed_path)
         if speed_capability is not None:
             self._attr_speed_count = int(speed_capability.max or 100)
             if speed_capability.can_write:
                 supported_features |= FanEntityFeature.SET_SPEED
+                if self.workmode_path is None and self._fan_speed_off_value() is not None:
+                    supported_features |= FanEntityFeature.TURN_OFF
 
         workmode_capability = self.capability(self.workmode_path)
+        if self.workmode_path is not None:
+            supported_features |= FanEntityFeature.TURN_OFF
         if workmode_capability is not None and workmode_capability.can_write and workmode_capability.values:
             supported_features |= FanEntityFeature.PRESET_MODE
             self._attr_preset_modes = [
@@ -209,9 +213,10 @@ class DynamicFan(DynamicElectroluxEntity, FanEntity):
         min_percentage = _percentage_from_speed(min_speed, max_speed) if min_speed > 0 else 0
         percentage = max(percentage, min_percentage)
         computed = round(max_speed * (percentage / 100))
+        max_steps = max((max_speed - min_speed) // step, 0)
         snapped_steps = int(((computed - min_speed) / step) + 0.5)
-        snapped = min_speed + (snapped_steps * step)
-        return min(max(snapped, min_speed), max_speed)
+        snapped_steps = min(max(snapped_steps, 0), max_steps)
+        return min_speed + (snapped_steps * step)
 
     def _workmode_for_speed(self, preset_mode: str | None) -> str:
         for value in (preset_mode, self._last_active_mode, *self._writable_workmode_values()):
