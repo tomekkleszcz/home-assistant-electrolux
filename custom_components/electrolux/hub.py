@@ -7,7 +7,7 @@ from homeassistant.helpers.storage import Store
 from .api import ElectroluxAPI
 from typing import Optional, Any
 from .token import Token
-from .api import Appliance, ApplianceState
+from .api import Appliance
 
 
 _LOGGER = logging.getLogger(__name__)
@@ -20,7 +20,7 @@ class ElectroluxHub:
         self.token = token
         self.scan_interval = scan_interval
         self.entities = []
-        self.discovered_appliances = []
+        self.discovered_appliances: list[Appliance] = []
         
         self.api = ElectroluxAPI(
             api_key=api_key,
@@ -34,12 +34,12 @@ class ElectroluxHub:
             CONF_API_KEY: self.api_key,
             CONF_ACCESS_TOKEN: token["access_token"],
             CONF_REFRESH_TOKEN: token["refresh_token"],
-            CONF_TOKEN_EXPIRATION_DATE: token["token_expiration_date"],
+            CONF_TOKEN_EXPIRATION_DATE: token["token_expiration_date"].isoformat() if token["token_expiration_date"] else None,
             CONF_SCAN_INTERVAL: self.scan_interval
         })
 
-    async def validate_credentials(self) -> bool:
-        return await self.api.get_appliances() is not []
+    async def validate_credentials(self, *, raise_on_error: bool = False) -> bool:
+        return bool(await self.api.get_account_email(raise_on_error=raise_on_error))
 
     async def poll_appliances(self, _: datetime):
         _LOGGER.info("Polling appliances")
@@ -79,24 +79,26 @@ class ElectroluxHub:
         except Exception as e:
             _LOGGER.error(f"Error during periodic update: {e}")
 
-    def get_discovered_appliances(self) -> list[Appliance] | None:
+    def get_discovered_appliances(self) -> list[Appliance]:
         return self.discovered_appliances
 
     async def discover_appliances(self):
         try:
             _LOGGER.info("Starting appliance discovery...")
-            self.discovered_appliances = await self.api.get_appliances()
-            if not self.discovered_appliances:
+            appliances = await self.api.get_appliances() or []
+            self.discovered_appliances = appliances
+            if not appliances:
                 _LOGGER.warning("No appliances discovered")
                 return []
 
-            _LOGGER.info(f"Discovered {len(self.discovered_appliances)} appliances:")
-            for appliance in self.discovered_appliances:
+            _LOGGER.info(f"Discovered {len(appliances)} appliances:")
+            for appliance in appliances:
                 _LOGGER.info(f"  - {appliance.name} (ID: {appliance.id}, Type: {appliance.type})")
 
-            return self.discovered_appliances
+            return appliances
         except Exception as e:
             _LOGGER.error(f"Failed to discover appliances: {e}")
+            self.discovered_appliances = []
             return []
     
     def add_entities(self, entities: list[Any]):

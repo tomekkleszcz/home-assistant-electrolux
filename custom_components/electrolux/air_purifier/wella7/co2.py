@@ -6,17 +6,19 @@ import logging
 
 from ...hub import ElectroluxHub
 from ...appliance import Appliance
-from ...capabilities import Capabilities
+from ...capabilities import ApplianceInfo
 from ...appliance_state import ApplianceState, ConnectionState
+from ...entity import ElectroluxApplianceEntity
 
 _LOGGER = logging.getLogger(__name__)
 
 
-class CO2Sensor(SensorEntity):
-    def __init__(self, hub: ElectroluxHub, appliance: Appliance, capabilities: Capabilities, appliance_state: ApplianceState):
+class CO2Sensor(ElectroluxApplianceEntity, SensorEntity):
+    def __init__(self, hub: ElectroluxHub, appliance: Appliance, info: ApplianceInfo, appliance_state: ApplianceState):
         self.hub = hub
         self.appliance = appliance
-        self.capabilities = capabilities
+        self.info = info
+        self.capabilities = info.capabilities
         self.appliance_state = appliance_state
 
         self._attr_unique_id = f"electrolux_co2_{appliance.id}"
@@ -29,10 +31,6 @@ class CO2Sensor(SensorEntity):
         
         self._update_attributes()
     
-    @property
-    def appliance_id(self) -> str:
-        return self.appliance.id
-
     def _update_attributes(self):
         reported = self.appliance_state.properties.reported
         self._attr_native_value = reported.eco2

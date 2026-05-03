@@ -6,17 +6,19 @@ import logging
 
 from ...hub import ElectroluxHub
 from ...appliance import Appliance
-from ...capabilities import Capabilities
+from ...capabilities import ApplianceInfo
 from ...appliance_state import ApplianceState, ConnectionState
+from ...entity import ElectroluxApplianceEntity
 
 _LOGGER = logging.getLogger(__name__)
 
 
-class IonizerSwitch(SwitchEntity):
-    def __init__(self, hub: ElectroluxHub, appliance: Appliance, capabilities: Capabilities, appliance_state: ApplianceState):
+class IonizerSwitch(ElectroluxApplianceEntity, SwitchEntity):
+    def __init__(self, hub: ElectroluxHub, appliance: Appliance, info: ApplianceInfo, appliance_state: ApplianceState):
         self.hub = hub
         self.appliance = appliance
-        self.capabilities = capabilities
+        self.info = info
+        self.capabilities = info.capabilities
         self.appliance_state = appliance_state
 
         self._attr_unique_id = f"electrolux_ionizer_{appliance.id}"
@@ -25,10 +27,6 @@ class IonizerSwitch(SwitchEntity):
         self._attr_should_poll = False
         
         self._update_attributes()
-
-    @property
-    def appliance_id(self) -> str:
-        return self.appliance.id
 
     def _update_attributes(self):
         reported = self.appliance_state.properties.reported

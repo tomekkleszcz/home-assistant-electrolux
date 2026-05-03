@@ -8,7 +8,7 @@ from homeassistant.core import HomeAssistant, callback
 from homeassistant.exceptions import HomeAssistantError
 from homeassistant.config_entries import ConfigEntry
 from .options_flow import ElectroluxOptionsFlow
-from .const import DOMAIN, CONF_API_KEY, CONF_REFRESH_TOKEN, CONF_ACCESS_TOKEN, CONF_TOKEN_EXPIRATION_DATE
+from .const import DOMAIN, CONF_API_KEY, CONF_REFRESH_TOKEN, CONF_ACCESS_TOKEN, CONF_TOKEN_EXPIRATION_DATE, CONF_ACCOUNT_EMAIL
 from .token import Token
 from .hub import ElectroluxHub
 from .jwt_utils import get_token_expiration
@@ -48,11 +48,20 @@ async def validate_input(hass: HomeAssistant, data: dict[str, Any]) -> dict[str,
         scan_interval=data[CONF_SCAN_INTERVAL]
     )
 
-    if not await hub.validate_credentials():
-        raise InvalidCredentials
+    try:
+        account_email = await hub.api.get_account_email(raise_on_error=True)
+        if not account_email:
+            raise InvalidCredentials
+    except InvalidCredentials:
+        raise
+    except Exception as err:
+        raise CannotConnect from err
+    finally:
+        await hub.close()
 
     return {
-        "title": "Electrolux Home",
+        "title": account_email,
+        CONF_ACCOUNT_EMAIL: account_email,
         CONF_SCAN_INTERVAL: data[CONF_SCAN_INTERVAL],
         "token_expiration": token_expiration
     }
@@ -78,7 +87,8 @@ class ConfigFlow(HassConfigFlow, domain=DOMAIN):
                     CONF_API_KEY: user_input[CONF_API_KEY],
                     CONF_ACCESS_TOKEN: user_input[CONF_ACCESS_TOKEN],
                     CONF_REFRESH_TOKEN: user_input[CONF_REFRESH_TOKEN],
-                    CONF_TOKEN_EXPIRATION_DATE: info["token_expiration"].isoformat()
+                    CONF_TOKEN_EXPIRATION_DATE: info["token_expiration"].isoformat() if info["token_expiration"] else None,
+                    CONF_ACCOUNT_EMAIL: info[CONF_ACCOUNT_EMAIL]
                 }
                 options = {
                     CONF_SCAN_INTERVAL: user_input[CONF_SCAN_INTERVAL]

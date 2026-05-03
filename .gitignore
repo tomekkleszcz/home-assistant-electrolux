@@ -30,15 +30,19 @@ htmlcov/
 .tox/
 .coverage
 .coverage.*
-.cache
+.cache/
+.mypy_cache/
+.pytest_cache/
+.ruff_cache/
+.pyright/
 nosetests.xml
 coverage.xml
 *.cover
 .hypothesis/
-.pytest_cache/
 
 # Environments
 .env
+.venv/
 .venv
 env/
 venv/
@@ -62,7 +66,21 @@ venv.bak/
 ehthumbs.db
 Thumbs.db
 
-# Home Assistant specific
+# Home Assistant generated state
 .storage/
 .config/
 *.log
+dev/config/.HA_VERSION
+dev/config/.ha_run.lock
+dev/config/.cloud/
+dev/config/.storage/
+dev/config/blueprints/
+dev/config/custom_components/
+dev/config/deps/
+dev/config/tts/
+dev/config/automations.yaml
+dev/config/home-assistant.log*
+dev/config/home-assistant_v2.db*
+dev/config/scenes.yaml
+dev/config/scripts.yaml
+dev/config/secrets.yaml

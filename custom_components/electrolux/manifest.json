@@ -7,6 +7,7 @@
     "dependencies": ["climate"],
     "documentation": "https://github.com/tomekkleszcz/home-assistant-electrolux",
     "homekit": {},
+    "issue_tracker": "https://github.com/tomekkleszcz/home-assistant-electrolux/issues",
     "iot_class": "cloud_polling",
     "quality_scale": "silver",
     "requirements": ["aiohttp>=3.8.0"],

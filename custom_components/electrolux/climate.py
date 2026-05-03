@@ -33,7 +33,7 @@ async def async_setup_entry(hass, config_entry, async_add_entities):
             continue
 
         from .air_conditioner.comfort600.climate import Climate
-        entities.append(Climate(hub, appliance, info.capabilities, state))
+        entities.append(Climate(hub, appliance, info, state))
 
     hub.add_entities(entities)
     async_add_entities(entities)
