@@ -1,7 +1,6 @@
 from __future__ import annotations
 from homeassistant.components.sensor import SensorEntity
 from homeassistant.const import CONCENTRATION_PARTS_PER_MILLION
-from homeassistant.helpers.entity import cached_property
 import logging
 
 from ...hub import ElectroluxHub
@@ -14,6 +13,8 @@ _LOGGER = logging.getLogger(__name__)
 
 
 class CO2Sensor(ElectroluxApplianceEntity, SensorEntity):
+    livestream_properties = frozenset({"ECO2", "CO2"})
+
     def __init__(self, hub: ElectroluxHub, appliance: Appliance, info: ApplianceInfo, appliance_state: ApplianceState):
         self.hub = hub
         self.appliance = appliance
@@ -41,6 +42,6 @@ class CO2Sensor(ElectroluxApplianceEntity, SensorEntity):
         else:
             self._attr_extra_state_attributes = {"status": "normal"}
 
-    @cached_property
+    @property
     def available(self) -> bool:
         return self.appliance_state.connectionState == ConnectionState.CONNECTED

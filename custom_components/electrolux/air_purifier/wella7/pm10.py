@@ -1,7 +1,6 @@
 from __future__ import annotations
 from homeassistant.components.sensor import SensorEntity
 from homeassistant.const import CONCENTRATION_MICROGRAMS_PER_CUBIC_METER
-from homeassistant.helpers.entity import cached_property
 import logging
 
 from ...hub import ElectroluxHub
@@ -14,6 +13,8 @@ _LOGGER = logging.getLogger(__name__)
 
 
 class PM10Sensor(ElectroluxApplianceEntity, SensorEntity):
+    livestream_properties = frozenset({"PM10"})
+
     def __init__(self, hub: ElectroluxHub, appliance: Appliance, info: ApplianceInfo, appliance_state: ApplianceState):
         self.hub = hub
         self.appliance = appliance
@@ -35,6 +36,6 @@ class PM10Sensor(ElectroluxApplianceEntity, SensorEntity):
         reported = self.appliance_state.properties.reported
         self._attr_native_value = reported.pm_10
 
-    @cached_property
+    @property
     def available(self) -> bool:
         return self.appliance_state.connectionState == ConnectionState.CONNECTED

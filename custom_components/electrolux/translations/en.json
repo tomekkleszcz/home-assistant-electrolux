@@ -11,11 +11,18 @@
         "step": {
             "user": {
                 "title": "Electrolux Home Configuration",
-                "description": "Configure your Electrolux Home integration.\n\n**How to get your credentials:**\n1. Go to [Electrolux Developer Portal]({docs_url})\n2. Create an account and register your application\n3. Get your API Key from the dashboard\n4. Generate Access Token and Refresh Token\n\n**Scan Interval:** How often to check for device updates (in seconds). Default: 120 seconds.",
+                "description": "Configure your Electrolux Home integration.\n\n**How to get your credentials:**\n1. Go to [Electrolux Developer Portal]({docs_url})\n2. Create an account and register your application\n3. Get your API Key from the dashboard\n4. Generate Access Token and Refresh Token\n\n**Livestream updates:** Use real-time updates when appliances change state. Disable this option to use polling instead.",
                 "data": {
                     "api_key": "API Key",
                     "access_token": "Access Token",
                     "refresh_token": "Refresh Token",
+                    "use_livestream_updates": "Use livestream updates"
+                }
+            },
+            "polling": {
+                "title": "Polling Options",
+                "description": "Configure polling updates.\n\n**Scan Interval:** Time in seconds between device state updates. Lower values mean more frequent updates but higher API usage.",
+                "data": {
                     "scan_interval": "Scan Interval"
                 }
             }
@@ -25,8 +32,9 @@
         "step": {
             "init": {
                 "title": "Electrolux Home Options",
-                "description": "Configure how often the integration should check for device updates.\n\n**Scan Interval:** Time in seconds between device state updates. Lower values mean more frequent updates but higher API usage.",
+                "description": "Configure appliance state updates.\n\n**Livestream updates:** Use real-time updates when appliances change state. Disable this option to use polling instead.\n\n**Scan Interval:** Time in seconds between device state updates when polling is enabled. Lower values mean more frequent updates but higher API usage.",
                 "data": {
+                    "use_livestream_updates": "Use livestream updates",
                     "scan_interval": "Scan Interval"
                 }
             }

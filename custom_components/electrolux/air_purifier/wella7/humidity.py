@@ -1,7 +1,6 @@
 from __future__ import annotations
 from homeassistant.components.sensor import SensorEntity
 from homeassistant.const import PERCENTAGE
-from homeassistant.helpers.entity import cached_property
 import logging
 
 from ...hub import ElectroluxHub
@@ -14,6 +13,8 @@ _LOGGER = logging.getLogger(__name__)
 
 
 class HumiditySensor(ElectroluxApplianceEntity, SensorEntity):
+    livestream_properties = frozenset({"Humidity"})
+
     def __init__(self, hub: ElectroluxHub, appliance: Appliance, info: ApplianceInfo, appliance_state: ApplianceState):
         self.hub = hub
         self.appliance = appliance
@@ -35,6 +36,6 @@ class HumiditySensor(ElectroluxApplianceEntity, SensorEntity):
         reported = self.appliance_state.properties.reported
         self._attr_native_value = reported.humidity
 
-    @cached_property
+    @property
     def available(self) -> bool:
         return self.appliance_state.connectionState == ConnectionState.CONNECTED

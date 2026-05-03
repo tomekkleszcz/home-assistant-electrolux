@@ -127,12 +127,20 @@ class Workmode(Enum):
 
     @classmethod
     def from_string(cls, value: str) -> "Optional[Workmode]":
+        if not value:
+            return None
+
         mapping = {
             "Manual": Workmode.MANUAL,
             "Auto": Workmode.AUTO,
-            "PowerOff": Workmode.POWER_OFF
+            "PowerOff": Workmode.POWER_OFF,
+            "MANUAL": Workmode.MANUAL,
+            "AUTO": Workmode.AUTO,
+            "POWER_OFF": Workmode.POWER_OFF,
+            "POWEROFF": Workmode.POWER_OFF,
         }
-        return mapping.get(value, None)
+        normalized = value.strip().upper().replace("_", "").replace(" ", "")
+        return mapping.get(value, mapping.get(normalized, None))
 
 
 class FilterType(IntEnum):
@@ -192,6 +200,47 @@ class ReportedProperties:
     pm_2_5_approximate: Optional[float]
 
 
+def update_reported_property(reported: ReportedProperties, property_name: str, value) -> bool:
+    mapping = {
+        "applianceState": ("appliance_state", ApplianceStateValue.from_string),
+        "temperatureRepresentation": ("temperature_representation", TemperatureRepresentation.from_string),
+        "sleepMode": ("sleep_mode", Toggle.from_string),
+        "targetTemperatureC": ("target_temperature_c", None),
+        "uiLockMode": ("ui_lock_mode", None),
+        "mode": ("mode", Mode.from_string),
+        "fanSpeedSetting": ("fan_speed_setting", FanSpeedSetting.from_string),
+        "verticalSwing": ("vertical_swing", Toggle.from_string),
+        "filterState": ("filter_state", State.from_string),
+        "ambientTemperatureC": ("ambient_temperature_c", None),
+        "Workmode": ("workmode", Workmode.from_string),
+        "Fanspeed": ("fan_speed", None),
+        "FilterLife_1": ("filter_life_1", None),
+        "FilterType_1": ("filter_type_1", FilterType.from_int),
+        "FilterLife_2": ("filter_life_2", None),
+        "FilterType_2": ("filter_type_2", FilterType.from_int),
+        "Ionizer": ("ionizer", None),
+        "UILight": ("ui_light", None),
+        "SafetyLock": ("safety_lock", None),
+        "PM1": ("pm_1", None),
+        "PM2_5": ("pm_2_5", None),
+        "PM10": ("pm_10", None),
+        "Temp": ("temperature", None),
+        "Humidity": ("humidity", None),
+        "TVOC": ("tvoc", None),
+        "ECO2": ("eco2", None),
+        "CO2": ("co2", None),
+        "UVState": ("uv_state", Toggle.from_string),
+        "PM2_5_Approximate": ("pm_2_5_approximate", None),
+    }
+    target = mapping.get(property_name)
+    if target is None:
+        return False
+
+    attr_name, converter = target
+    setattr(reported, attr_name, converter(value) if converter else value)
+    return True
+
+
 @dataclass
 class Properties:
     reported: ReportedProperties
@@ -203,4 +252,3 @@ class ApplianceState:
     connectionState: Optional[ConnectionState]
     status: Optional[Status]
     properties: Properties
-
