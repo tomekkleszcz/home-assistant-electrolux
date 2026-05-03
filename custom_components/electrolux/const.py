@@ -10,3 +10,5 @@ CONF_REFRESH_TOKEN = "refresh_token"
 CONF_TOKEN_EXPIRATION_DATE = "token_expiration_date"
 CONF_ACCOUNT_EMAIL = "account_email"
 CONF_USE_LIVESTREAM_UPDATES = "use_livestream_updates"
+
+MIN_SCAN_INTERVAL = 30

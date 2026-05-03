@@ -16,6 +16,7 @@ from .const import (
     CONF_TOKEN_EXPIRATION_DATE,
     CONF_USE_LIVESTREAM_UPDATES,
     DOMAIN,
+    MIN_SCAN_INTERVAL,
 )
 from .token import Token
 from .hub import ElectroluxHub
@@ -35,7 +36,10 @@ STEP_USER_DATA_SCHEMA = vol.Schema(
 
 STEP_POLLING_OPTIONS_DATA_SCHEMA = vol.Schema(
     {
-        vol.Required(CONF_SCAN_INTERVAL, default=120): int,
+        vol.Required(CONF_SCAN_INTERVAL, default=120): vol.All(
+            vol.Coerce(int),
+            vol.Range(min=MIN_SCAN_INTERVAL),
+        ),
     }
 )
 

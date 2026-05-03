@@ -5,6 +5,7 @@ import logging
 from collections.abc import AsyncIterator
 from datetime import datetime, timedelta
 from typing import Any, Optional, Protocol
+from urllib.parse import urlparse
 
 from .capabilities import ApplianceInfo, capabilities_from_json
 
@@ -33,6 +34,7 @@ class ElectroluxAPI:
         self.api_key = api_key
         self.token = token
         self.on_token_refresh = on_token_refresh
+        self._token_refresh_lock = asyncio.Lock()
         
         self.connector = aiohttp.TCPConnector(keepalive_timeout=30, limit=100)
         timeout = aiohttp.ClientTimeout(total=30, connect=10)
@@ -76,9 +78,22 @@ class ElectroluxAPI:
         if datetime.now() < self.token["token_expiration_date"]:
             return
 
-        _LOGGER.info("Access token expired, refreshing...")
-        if not await self.refresh_access_token():
-            raise Exception("Failed to refresh access token")
+        async with self._token_refresh_lock:
+            if self.token and self.token["token_expiration_date"] and datetime.now() < self.token["token_expiration_date"]:
+                return
+
+            _LOGGER.info("Access token expired, refreshing...")
+            if not await self.refresh_access_token():
+                raise Exception("Failed to refresh access token")
+
+    def _is_valid_livestream_url(self, livestream_url: str) -> bool:
+        parsed = urlparse(livestream_url)
+        hostname = parsed.hostname
+        return (
+            parsed.scheme == "https"
+            and hostname is not None
+            and (hostname == "electrolux.one" or hostname.endswith(".electrolux.one"))
+        )
 
 
     async def _request(self, method: str, url: str, **kwargs) -> aiohttp.ClientResponse:
@@ -164,7 +179,12 @@ class ElectroluxAPI:
         try:
             response = await self._request("GET", "/api/v1/configurations/livestream")
             data = await response.json()
-            if not isinstance(data, dict) or not isinstance(data.get("url"), str):
+            livestream_url = data.get("url") if isinstance(data, dict) else None
+            if (
+                not isinstance(data, dict)
+                or not isinstance(livestream_url, str)
+                or not self._is_valid_livestream_url(livestream_url)
+            ):
                 _LOGGER.error(f"Unexpected livestream configuration response: {data}")
                 return None
             return data
@@ -173,6 +193,9 @@ class ElectroluxAPI:
             return None
 
     async def stream_livestream_events(self, livestream_url: str) -> AsyncIterator[dict[str, Any]]:
+        if not self._is_valid_livestream_url(livestream_url):
+            raise ValueError(f"Unexpected livestream URL: {livestream_url}")
+
         await self._ensure_access_token()
 
         headers = {

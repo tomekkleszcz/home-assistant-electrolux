@@ -19,6 +19,7 @@ from .const import (
     CONF_TOKEN_EXPIRATION_DATE,
     CONF_USE_LIVESTREAM_UPDATES,
     DOMAIN,
+    MIN_SCAN_INTERVAL,
 )
 from .jwt_utils import get_token_expiration
 
@@ -70,7 +71,10 @@ async def async_setup_entry(hass: HomeAssistant, entry: ElectroluxConfigEntry) -
     if token_expiration_date is None:
         token_expiration_date = get_token_expiration(access_token)
 
-    scan_interval: int = cast(int, entry.options.get("scan_interval", entry.data.get("scan_interval", 120)))
+    scan_interval: int = max(
+        MIN_SCAN_INTERVAL,
+        cast(int, entry.options.get("scan_interval", entry.data.get("scan_interval", 120))),
+    )
     use_livestream_updates = cast(
         bool,
         entry.options.get(

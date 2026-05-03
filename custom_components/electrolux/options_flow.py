@@ -4,7 +4,7 @@ import voluptuous as vol
 from homeassistant.config_entries import ConfigEntry, ConfigFlowResult, OptionsFlow
 from homeassistant.const import CONF_SCAN_INTERVAL
 
-from .const import CONF_USE_LIVESTREAM_UPDATES
+from .const import CONF_USE_LIVESTREAM_UPDATES, MIN_SCAN_INTERVAL
 
 
 def _use_livestream_updates_default(config_entry: ConfigEntry) -> bool:
@@ -15,10 +15,11 @@ def _use_livestream_updates_default(config_entry: ConfigEntry) -> bool:
 
 
 def _scan_interval_default(config_entry: ConfigEntry) -> int:
-    return config_entry.options.get(
+    scan_interval = config_entry.options.get(
         CONF_SCAN_INTERVAL,
         config_entry.data.get(CONF_SCAN_INTERVAL, 120),
     )
+    return max(MIN_SCAN_INTERVAL, scan_interval)
 
 
 def get_options_schema(config_entry: ConfigEntry, use_livestream_updates: bool | None = None) -> vol.Schema:
@@ -37,7 +38,7 @@ def get_options_schema(config_entry: ConfigEntry, use_livestream_updates: bool |
                 CONF_SCAN_INTERVAL,
                 default=_scan_interval_default(config_entry),
             )
-        ] = int
+        ] = vol.All(vol.Coerce(int), vol.Range(min=MIN_SCAN_INTERVAL))
 
     return vol.Schema(schema)
 

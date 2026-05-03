@@ -73,6 +73,13 @@ class Fan(ElectroluxApplianceEntity, FanEntity):
             return "Manual"
         return "PowerOff"
 
+    def _fan_speed_from_percentage(self, percentage: int) -> int:
+        fan_speed_cap = cast(IntegerCapability, self.capabilities["Fanspeed"])
+        max_speed = fan_speed_cap.max or 5
+        min_speed = fan_speed_cap.min or 1
+        computed = int((percentage / 100) * max_speed)
+        return max(min_speed, min(max_speed, computed))
+
     @property
     def available(self) -> bool:
         return self.appliance_state.connectionState == ConnectionState.CONNECTED
@@ -95,8 +102,7 @@ class Fan(ElectroluxApplianceEntity, FanEntity):
             "Workmode": self._command_value_from_workmode(target_workmode)
         }
         if percentage is not None:
-            fan_speed_cap = cast(IntegerCapability, self.capabilities["Fanspeed"])
-            body["Fanspeed"] = int((percentage / 100) * fan_speed_cap.max) if fan_speed_cap.max else 5
+            body["Fanspeed"] = self._fan_speed_from_percentage(percentage)
 
         success = await self.hub.send_command(self.appliance.id, body)
         if not success:
@@ -130,8 +136,7 @@ class Fan(ElectroluxApplianceEntity, FanEntity):
             self.async_write_ha_state()
             return
 
-        fan_speed_cap = cast(IntegerCapability, self.capabilities["Fanspeed"])
-        fan_speed = int((percentage / 100) * fan_speed_cap.max) if fan_speed_cap.max else 5
+        fan_speed = self._fan_speed_from_percentage(percentage)
 
         body = {
             "Fanspeed": fan_speed

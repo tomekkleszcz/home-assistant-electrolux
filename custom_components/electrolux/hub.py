@@ -18,6 +18,7 @@ _LOGGER = logging.getLogger(__name__)
 
 class ElectroluxHub:
     _COMMAND_ONLY_PROPERTIES = frozenset({"executeCommand"})
+    _COMMAND_HISTORY_LIMIT = 50
 
     def __init__(
         self,
@@ -106,9 +107,10 @@ class ElectroluxHub:
     def register_livestream_command_echo_filter(self, appliance_id: str, body: dict[str, Any]) -> None:
         for property_name, value in body.items():
             history_key = (appliance_id, property_name)
-            self._livestream_command_history.setdefault(history_key, []).append(
-                self._normalize_livestream_value(property_name, value)
-            )
+            history = self._livestream_command_history.setdefault(history_key, [])
+            history.append(self._normalize_livestream_value(property_name, value))
+            if len(history) > self._COMMAND_HISTORY_LIMIT:
+                del history[:-self._COMMAND_HISTORY_LIMIT]
             _LOGGER.debug(
                 "Registered livestream command history for appliance %s: %s=%s",
                 appliance_id,
