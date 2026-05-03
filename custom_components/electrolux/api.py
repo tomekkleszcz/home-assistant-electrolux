@@ -10,7 +10,6 @@ from .appliance_state import ApplianceState, ApplianceStateValue, ConnectionStat
 from .appliance import Appliance
 from .const import API_HOST
 from typing import Any
-from homeassistant.helpers.storage import Store
 from .token import Token
 
 
@@ -132,6 +131,22 @@ class ElectroluxAPI:
             return appliances
         except Exception as e:
             _LOGGER.error(f"Failed to get appliances: {e}")
+            return None
+
+    async def get_account_email(self, *, raise_on_error: bool = False) -> Optional[str]:
+        try:
+            response = await self._request("GET", "/api/v1/users/current/email")
+            data = await response.json()
+            return data.get("email")
+        except aiohttp.ClientResponseError as e:
+            if raise_on_error:
+                raise
+            _LOGGER.error(f"Failed to get account email: {e}")
+            return None
+        except Exception as e:
+            if raise_on_error:
+                raise
+            _LOGGER.error(f"Failed to get account email: {e}")
             return None
 
     async def get_appliance_info(self, appliance_id: str) -> Optional[ApplianceInfo]:

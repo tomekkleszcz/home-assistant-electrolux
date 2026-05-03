@@ -1,4 +1,4 @@
 {
-    "include": ["."],
-    "extraPaths": ["../../../"]
+    "include": ["custom_components/electrolux"],
+    "extraPaths": ["."]
 }

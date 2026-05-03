@@ -2,8 +2,6 @@ from dataclasses import dataclass
 from enum import Enum
 from typing import Any, Dict, Optional, Union
 
-from dataclasses import asdict
-
 
 class DeviceType(Enum):
     PORTABLE_AIR_CONDITIONER = "PORTABLE_AIR_CONDITIONER"

@@ -25,8 +25,43 @@ This is an integration for connecting Electrolux devices which are controlled by
 ### 🏗️ Manual Installation
 
 1. Download the latest release
-2. Extract the `electrolux` folder to your `custom_components` directory
+2. Copy `custom_components/electrolux` from this repository to your Home Assistant `custom_components` directory
 3. Restart Home Assistant
+
+## 🧑‍💻 Development
+
+This repository uses the standard HACS custom integration layout:
+
+```text
+custom_components/electrolux/
+```
+
+Start a local Home Assistant instance with the integration mounted into the dev config:
+
+```bash
+make dev
+```
+
+Home Assistant will be available at [http://localhost:8123](http://localhost:8123). The default image tag, port, and timezone are defined in `.env.example`; copy it to `.env` if you want local overrides.
+
+Useful development commands:
+
+```bash
+make dev-up
+make logs
+make restart
+make lint
+make dev-down
+make check
+```
+
+For runtime reloads of an existing config entry, create a long-lived access token in Home Assistant and run:
+
+```bash
+make reload-entry ENTRY_ID=<entry_id> HA_TOKEN=<token>
+```
+
+Home Assistant does not reliably re-import changed Python modules for custom integrations during config-entry reload. Use `make restart` after code changes. Use `make reload-entry` only for behavior that is handled by unloading and setting up the already loaded integration again.
 
 ## ⚙️ Configuration
 

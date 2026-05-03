@@ -29,13 +29,13 @@ async def async_setup_entry(hass, config_entry, async_add_entities):
             TemperatureSensor,
             CO2Sensor
         )
-        entities.append(PM1Sensor(hub, appliance, info.capabilities, state))
-        entities.append(PM25Sensor(hub, appliance, info.capabilities, state))
-        entities.append(PM10Sensor(hub, appliance, info.capabilities, state))
-        entities.append(TVOCSensor(hub, appliance, info.capabilities, state))
-        entities.append(HumiditySensor(hub, appliance, info.capabilities, state))
-        entities.append(TemperatureSensor(hub, appliance, info.capabilities, state))
-        entities.append(CO2Sensor(hub, appliance, info.capabilities, state))
+        entities.append(PM1Sensor(hub, appliance, info, state))
+        entities.append(PM25Sensor(hub, appliance, info, state))
+        entities.append(PM10Sensor(hub, appliance, info, state))
+        entities.append(TVOCSensor(hub, appliance, info, state))
+        entities.append(HumiditySensor(hub, appliance, info, state))
+        entities.append(TemperatureSensor(hub, appliance, info, state))
+        entities.append(CO2Sensor(hub, appliance, info, state))
 
     hub.add_entities(entities)
     async_add_entities(entities)

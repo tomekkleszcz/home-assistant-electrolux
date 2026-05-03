@@ -1,5 +1,4 @@
 from .const import DOMAIN
-from .air_conditioner.comfort600.climate import Climate
 
 async def async_setup_entry(hass, config_entry, async_add_entities):
     entry_data = hass.data[DOMAIN][config_entry.entry_id]
@@ -22,7 +21,7 @@ async def async_setup_entry(hass, config_entry, async_add_entities):
             continue
 
         from .air_purifier.wella7 import Fan
-        entities.append(Fan(hub, appliance, info.capabilities, state))
+        entities.append(Fan(hub, appliance, info, state))
 
     hub.add_entities(entities)
     async_add_entities(entities)
