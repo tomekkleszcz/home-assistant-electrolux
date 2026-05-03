@@ -11,12 +11,19 @@
         "step": {
             "user": {
                 "title": "Konfiguracja Electrolux Home",
-                "description": "Skonfiguruj integrację Electrolux Home.\n\n**Jak uzyskać dane uwierzytelniające:**\n1. Przejdź do [Portalu Deweloperskiego Electrolux]({docs_url})\n2. Utwórz konto i zarejestruj swoją aplikację\n3. Pobierz Klucz API z panelu sterowania\n4. Wygeneruj Token Dostępu i Token Odświeżania\n\n**Interwał Skanowania:** Jak często sprawdzać aktualizacje urządzeń (w sekundach). Domyślnie: 120 sekund.",
+                "description": "Skonfiguruj integrację Electrolux Home.\n\n**Jak uzyskać dane uwierzytelniające:**\n1. Przejdź do [Portalu Deweloperskiego Electrolux]({docs_url})\n2. Utwórz konto i zarejestruj swoją aplikację\n3. Pobierz Klucz API z panelu sterowania\n4. Wygeneruj Token Dostępu i Token Odświeżania\n\n**Aktualizacje livestream:** Używaj aktualizacji w czasie rzeczywistym, gdy urządzenia zmienią stan. Wyłącz tę opcję, aby używać pollingu.",
                 "data": {
                     "api_key": "Klucz API",
                     "access_token": "Token Dostępu (Access Token)",
                     "refresh_token": "Token Odświeżania (Refresh Token)",
-                    "scan_interval": "Interwał Skanowania"
+                    "use_livestream_updates": "Używaj aktualizacji livestream"
+                }
+            },
+            "polling": {
+                "title": "Opcje pollingu",
+                "description": "Skonfiguruj aktualizacje przez polling.\n\n**Interwał skanowania:** Czas w sekundach między aktualizacjami stanu urządzeń. Niższe wartości oznaczają częstsze aktualizacje, ale wyższe użycie API.",
+                "data": {
+                    "scan_interval": "Interwał skanowania"
                 }
             }
         }
@@ -25,9 +32,10 @@
         "step": {
             "init": {
                 "title": "Opcje Electrolux Home",
-                "description": "Skonfiguruj jak często integracja powinna sprawdzać aktualizacje urządzeń.\n\n**Interwał Skanowania:** Czas w sekundach między aktualizacjami stanu urządzeń. Niższe wartości oznaczają częstsze aktualizacje ale wyższe użycie API.",
+                "description": "Skonfiguruj aktualizacje stanu urządzeń.\n\n**Aktualizacje livestream:** Używaj aktualizacji w czasie rzeczywistym, gdy urządzenia zmienią stan. Wyłącz tę opcję, aby używać pollingu.\n\n**Interwał skanowania:** Czas w sekundach między aktualizacjami stanu urządzeń, gdy polling jest włączony. Niższe wartości oznaczają częstsze aktualizacje, ale wyższe użycie API.",
                 "data": {
-                    "scan_interval": "Interwał Skanowania"
+                    "use_livestream_updates": "Używaj aktualizacji livestream",
+                    "scan_interval": "Interwał skanowania"
                 }
             }
         }

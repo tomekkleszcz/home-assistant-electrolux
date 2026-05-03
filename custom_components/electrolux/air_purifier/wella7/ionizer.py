@@ -1,7 +1,6 @@
 from __future__ import annotations
 from typing import Any
 from homeassistant.components.switch import SwitchEntity
-from homeassistant.helpers.entity import cached_property
 import logging
 
 from ...hub import ElectroluxHub
@@ -14,6 +13,8 @@ _LOGGER = logging.getLogger(__name__)
 
 
 class IonizerSwitch(ElectroluxApplianceEntity, SwitchEntity):
+    livestream_properties = frozenset({"Ionizer"})
+
     def __init__(self, hub: ElectroluxHub, appliance: Appliance, info: ApplianceInfo, appliance_state: ApplianceState):
         self.hub = hub
         self.appliance = appliance
@@ -32,12 +33,12 @@ class IonizerSwitch(ElectroluxApplianceEntity, SwitchEntity):
         reported = self.appliance_state.properties.reported
         self._attr_is_on = reported.ionizer if reported.ionizer else False
 
-    @cached_property
+    @property
     def available(self) -> bool:
         return self.appliance_state.connectionState == ConnectionState.CONNECTED
 
     async def async_turn_on(self, **kwargs: Any) -> None:
-        success = await self.hub.api.send_command(self.appliance.id, {
+        success = await self.hub.send_command(self.appliance.id, {
             "Ionizer": True
         })
         if not success:
@@ -48,7 +49,7 @@ class IonizerSwitch(ElectroluxApplianceEntity, SwitchEntity):
         self.async_write_ha_state()
 
     async def async_turn_off(self, **kwargs: Any) -> None:
-        success = await self.hub.api.send_command(self.appliance.id, {
+        success = await self.hub.send_command(self.appliance.id, {
             "Ionizer": False
         })
         if not success:

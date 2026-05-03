@@ -4,13 +4,23 @@ from datetime import datetime, timedelta
 from typing import cast, TypedDict
 
 from homeassistant.config_entries import ConfigEntry
-from homeassistant.const import Platform
+from homeassistant.const import EVENT_HOMEASSISTANT_STOP, Platform
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.event import async_track_time_interval
+from homeassistant.helpers.start import async_at_started
 from homeassistant.helpers.storage import Store
 from .token import Token
 from .hub import ElectroluxHub
-from .const import CONF_ACCESS_TOKEN, CONF_ACCOUNT_EMAIL, CONF_API_KEY, CONF_REFRESH_TOKEN, CONF_TOKEN_EXPIRATION_DATE, DOMAIN
+from .const import (
+    CONF_ACCESS_TOKEN,
+    CONF_ACCOUNT_EMAIL,
+    CONF_API_KEY,
+    CONF_REFRESH_TOKEN,
+    CONF_TOKEN_EXPIRATION_DATE,
+    CONF_USE_LIVESTREAM_UPDATES,
+    DOMAIN,
+    MIN_SCAN_INTERVAL,
+)
 from .jwt_utils import get_token_expiration
 
 _LOGGER = logging.getLogger(__name__)
@@ -19,6 +29,7 @@ _PLATFORMS: list[Platform] = [Platform.CLIMATE, Platform.FAN, Platform.SENSOR]
 
 class ElectroluxConfigData(TypedDict):
     scan_interval: int
+    use_livestream_updates: bool
 
 ElectroluxConfigEntry = ConfigEntry[ElectroluxConfigData]
 
@@ -60,7 +71,17 @@ async def async_setup_entry(hass: HomeAssistant, entry: ElectroluxConfigEntry) -
     if token_expiration_date is None:
         token_expiration_date = get_token_expiration(access_token)
 
-    scan_interval: int = cast(int, entry.options.get("scan_interval", entry.data.get("scan_interval", 120)))
+    scan_interval: int = max(
+        MIN_SCAN_INTERVAL,
+        cast(int, entry.options.get("scan_interval", entry.data.get("scan_interval", 120))),
+    )
+    use_livestream_updates = cast(
+        bool,
+        entry.options.get(
+            CONF_USE_LIVESTREAM_UPDATES,
+            entry.data.get(CONF_USE_LIVESTREAM_UPDATES, True),
+        ),
+    )
 
     token: Token = {
         "access_token": access_token,
@@ -72,7 +93,8 @@ async def async_setup_entry(hass: HomeAssistant, entry: ElectroluxConfigEntry) -
         hass=hass,
         api_key=api_key,
         token=token,
-        scan_interval=scan_interval
+        scan_interval=scan_interval,
+        use_livestream_updates=use_livestream_updates,
     )
 
     timer = None
@@ -87,15 +109,26 @@ async def async_setup_entry(hass: HomeAssistant, entry: ElectroluxConfigEntry) -
 
         await hub.discover_appliances()
 
-        # Store the timer so it can be cancelled later
-        timer = async_track_time_interval(hass, hub.poll_appliances, timedelta(seconds=scan_interval))
-
         hass.data.setdefault(DOMAIN, {})
         hass.data[DOMAIN][entry.entry_id] = {
             "hub": hub,
             "timer": timer
         }
         await hass.config_entries.async_forward_entry_setups(entry, _PLATFORMS)
+
+        async def close_hub_at_stop(_) -> None:
+            await hub.close()
+
+        entry.async_on_unload(hass.bus.async_listen_once(EVENT_HOMEASSISTANT_STOP, close_hub_at_stop))
+
+        if use_livestream_updates:
+            async def start_livestream_after_started(_: HomeAssistant) -> None:
+                hub.start_livestream()
+
+            entry.async_on_unload(async_at_started(hass, start_livestream_after_started))
+        else:
+            timer = async_track_time_interval(hass, hub.poll_appliances, timedelta(seconds=scan_interval))
+            hass.data[DOMAIN][entry.entry_id]["timer"] = timer
     except Exception:
         if timer is not None:
             timer()

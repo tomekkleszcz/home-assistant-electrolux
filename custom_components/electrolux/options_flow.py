@@ -1,34 +1,70 @@
 from typing import Any
+
+import voluptuous as vol
+from homeassistant.config_entries import ConfigEntry, ConfigFlowResult, OptionsFlow
 from homeassistant.const import CONF_SCAN_INTERVAL
-from homeassistant.core import vol
-from homeassistant.config_entries import ConfigFlowResult, OptionsFlow, ConfigEntry
+
+from .const import CONF_USE_LIVESTREAM_UPDATES, MIN_SCAN_INTERVAL
 
 
+def _use_livestream_updates_default(config_entry: ConfigEntry) -> bool:
+    return config_entry.options.get(
+        CONF_USE_LIVESTREAM_UPDATES,
+        config_entry.data.get(CONF_USE_LIVESTREAM_UPDATES, True),
+    )
 
-def get_options_schema(config_entry: ConfigEntry) -> vol.Schema:
-    return vol.Schema(
-        {
+
+def _scan_interval_default(config_entry: ConfigEntry) -> int:
+    scan_interval = config_entry.options.get(
+        CONF_SCAN_INTERVAL,
+        config_entry.data.get(CONF_SCAN_INTERVAL, 120),
+    )
+    return max(MIN_SCAN_INTERVAL, scan_interval)
+
+
+def get_options_schema(config_entry: ConfigEntry, use_livestream_updates: bool | None = None) -> vol.Schema:
+    if use_livestream_updates is None:
+        use_livestream_updates = _use_livestream_updates_default(config_entry)
+
+    schema = {
+        vol.Required(
+            CONF_USE_LIVESTREAM_UPDATES,
+            default=use_livestream_updates,
+        ): bool,
+    }
+    if not use_livestream_updates:
+        schema[
             vol.Required(
                 CONF_SCAN_INTERVAL,
-                default=config_entry.options.get(CONF_SCAN_INTERVAL, 120),
-            ): int,
-        }
-    )
+                default=_scan_interval_default(config_entry),
+            )
+        ] = vol.All(vol.Coerce(int), vol.Range(min=MIN_SCAN_INTERVAL))
+
+    return vol.Schema(schema)
+
+
+def options_from_user_input(config_entry: ConfigEntry, user_input: dict[str, Any]) -> dict[str, Any]:
+    return {
+        CONF_USE_LIVESTREAM_UPDATES: user_input[CONF_USE_LIVESTREAM_UPDATES],
+        CONF_SCAN_INTERVAL: user_input.get(
+            CONF_SCAN_INTERVAL,
+            _scan_interval_default(config_entry),
+        ),
+    }
+
 
 class ElectroluxOptionsFlow(OptionsFlow):
     async def async_step_init(self, user_input: dict[str, Any] | None = None) -> ConfigFlowResult:
         if user_input is not None:
-            result = self.async_create_entry(data=user_input)
-            
-            async def reload_after_save():
-                await self.hass.async_add_executor_job(lambda: None)
-                from . import async_update_options
-                await async_update_options(self.hass, self.config_entry)
-            
-            self.hass.async_create_task(reload_after_save())
-            
-            return result
-        
+            use_livestream_updates = user_input[CONF_USE_LIVESTREAM_UPDATES]
+            if not use_livestream_updates and CONF_SCAN_INTERVAL not in user_input:
+                return self.async_show_form(
+                    step_id="init",
+                    data_schema=get_options_schema(self.config_entry, use_livestream_updates=False),
+                )
+
+            return self.async_create_entry(data=options_from_user_input(self.config_entry, user_input))
+
         return self.async_show_form(
             step_id="init",
             data_schema=get_options_schema(self.config_entry),

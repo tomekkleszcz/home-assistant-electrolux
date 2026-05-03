@@ -4,7 +4,6 @@ from typing import Any, cast
 from ...capabilities import ApplianceInfo, TemperatureCapability
 from homeassistant.components.climate import ClimateEntity, ClimateEntityFeature, HVACMode
 from homeassistant.const import UnitOfTemperature
-from homeassistant.helpers.entity import cached_property
 import logging
 
 from ...hub import ElectroluxHub
@@ -16,6 +15,18 @@ _LOGGER = logging.getLogger(__name__)
 
 
 class Climate(ElectroluxApplianceEntity, ClimateEntity):
+    livestream_properties = frozenset(
+        {
+            "ambientTemperatureC",
+            "applianceState",
+            "fanSpeedSetting",
+            "mode",
+            "targetTemperatureC",
+            "uiLockMode",
+            "verticalSwing",
+        }
+    )
+
     last_turn_off_time: datetime | None = None
 
     def __init__(self, hub: ElectroluxHub, appliance: Appliance, info: ApplianceInfo, appliance_state: ApplianceState):
@@ -76,7 +87,7 @@ class Climate(ElectroluxApplianceEntity, ClimateEntity):
         else:
             self._attr_swing_mode = "on"
 
-    @cached_property
+    @property
     def available(self) -> bool:
         return self.appliance_state.connectionState == ConnectionState.CONNECTED
 
@@ -88,9 +99,13 @@ class Climate(ElectroluxApplianceEntity, ClimateEntity):
         )
 
     async def async_turn_on(self) -> None:
-        success = await self.hub.api.send_command(self.appliance.id, {
-            "executeCommand": "ON"
-        })
+        success = await self.hub.send_command(
+            self.appliance.id,
+            {
+                "executeCommand": "ON"
+            },
+            expected_livestream={"applianceState": "RUNNING"},
+        )
         if not success:
             self.async_write_ha_state()
             return
@@ -110,9 +125,13 @@ class Climate(ElectroluxApplianceEntity, ClimateEntity):
             self.last_turn_off_time = datetime.now()
             return
 
-        success = await self.hub.api.send_command(self.appliance.id, {
-            "executeCommand": "OFF"
-        })
+        success = await self.hub.send_command(
+            self.appliance.id,
+            {
+                "executeCommand": "OFF"
+            },
+            expected_livestream={"applianceState": "OFF"},
+        )
         if not success:
             self.async_write_ha_state()
             return
@@ -142,10 +161,14 @@ class Climate(ElectroluxApplianceEntity, ClimateEntity):
 
         _LOGGER.info("SET HVAC MODE")
 
-        success = await self.hub.api.send_command(self.appliance.id, {
-            "executeCommand": "ON",
-            "mode": mode
-        })
+        success = await self.hub.send_command(
+            self.appliance.id,
+            {
+                "executeCommand": "ON",
+                "mode": mode
+            },
+            expected_livestream={"applianceState": "RUNNING"},
+        )
         if not success:
             return
 
@@ -169,7 +192,7 @@ class Climate(ElectroluxApplianceEntity, ClimateEntity):
 
         _LOGGER.info("SET TEMPERATURE")
 
-        success = await self.hub.api.send_command(self.appliance.id, {
+        success = await self.hub.send_command(self.appliance.id, {
             "targetTemperatureC": kwargs["temperature"]
         })
         if not success:
@@ -193,7 +216,7 @@ class Climate(ElectroluxApplianceEntity, ClimateEntity):
 
         _LOGGER.info("SET PRESET MODE", preset_mode)
 
-        success = await self.hub.api.send_command(self.appliance.id, {
+        success = await self.hub.send_command(self.appliance.id, {
             "uiLockMode": locked
         })
         if not success:
@@ -214,7 +237,7 @@ class Climate(ElectroluxApplianceEntity, ClimateEntity):
 
         _LOGGER.info("SET SWING MODE", swing_mode)
 
-        success = await self.hub.api.send_command(self.appliance.id, {
+        success = await self.hub.send_command(self.appliance.id, {
             "verticalSwing": "ON" if enabled else "OFF"
         })
         if not success:

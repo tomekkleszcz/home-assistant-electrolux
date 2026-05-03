@@ -1,7 +1,11 @@
+import asyncio
 import aiohttp
+import json
 import logging
+from collections.abc import AsyncIterator
 from datetime import datetime, timedelta
-from typing import Optional, Protocol
+from typing import Any, Optional, Protocol
+from urllib.parse import urlparse
 
 from .capabilities import ApplianceInfo, capabilities_from_json
 
@@ -9,7 +13,6 @@ from .appliance_state import ApplianceState, ApplianceStateValue, ConnectionStat
 
 from .appliance import Appliance
 from .const import API_HOST
-from typing import Any
 from .token import Token
 
 
@@ -31,6 +34,7 @@ class ElectroluxAPI:
         self.api_key = api_key
         self.token = token
         self.on_token_refresh = on_token_refresh
+        self._token_refresh_lock = asyncio.Lock()
         
         self.connector = aiohttp.TCPConnector(keepalive_timeout=30, limit=100)
         timeout = aiohttp.ClientTimeout(total=30, connect=10)
@@ -62,17 +66,39 @@ class ElectroluxAPI:
             return headers
         
         if self.token and self.token["access_token"]:
-            headers["Authorization"] = f"Bearer {self.token["access_token"]}"
+            headers["Authorization"] = f"Bearer {self.token['access_token']}"
 
         return headers
 
 
+    async def _ensure_access_token(self) -> None:
+        if not self.token or not self.token["token_expiration_date"]:
+            return
+
+        if datetime.now() < self.token["token_expiration_date"]:
+            return
+
+        async with self._token_refresh_lock:
+            if self.token and self.token["token_expiration_date"] and datetime.now() < self.token["token_expiration_date"]:
+                return
+
+            _LOGGER.info("Access token expired, refreshing...")
+            if not await self.refresh_access_token():
+                raise Exception("Failed to refresh access token")
+
+    def _is_valid_livestream_url(self, livestream_url: str) -> bool:
+        parsed = urlparse(livestream_url)
+        hostname = parsed.hostname
+        return (
+            parsed.scheme == "https"
+            and hostname is not None
+            and (hostname == "electrolux.one" or hostname.endswith(".electrolux.one"))
+        )
+
+
     async def _request(self, method: str, url: str, **kwargs) -> aiohttp.ClientResponse:
-        if self.token and self.token["token_expiration_date"] and url != "/api/v1/token/refresh":
-            if datetime.now() >= self.token["token_expiration_date"]:
-                _LOGGER.info("Access token expired, refreshing...")
-                if not await self.refresh_access_token():
-                    raise Exception("Failed to refresh access token")
+        if url != "/api/v1/token/refresh":
+            await self._ensure_access_token()
         
         url = f"{API_HOST}{url}"
 
@@ -148,6 +174,86 @@ class ElectroluxAPI:
                 raise
             _LOGGER.error(f"Failed to get account email: {e}")
             return None
+
+    async def get_livestream_configuration(self) -> Optional[dict[str, Any]]:
+        try:
+            response = await self._request("GET", "/api/v1/configurations/livestream")
+            data = await response.json()
+            livestream_url = data.get("url") if isinstance(data, dict) else None
+            if (
+                not isinstance(data, dict)
+                or not isinstance(livestream_url, str)
+                or not self._is_valid_livestream_url(livestream_url)
+            ):
+                _LOGGER.error(f"Unexpected livestream configuration response: {data}")
+                return None
+            return data
+        except Exception as e:
+            _LOGGER.error(f"Failed to get livestream configuration: {e}")
+            return None
+
+    async def stream_livestream_events(self, livestream_url: str) -> AsyncIterator[dict[str, Any]]:
+        if not self._is_valid_livestream_url(livestream_url):
+            raise ValueError(f"Unexpected livestream URL: {livestream_url}")
+
+        await self._ensure_access_token()
+
+        headers = {
+            "Accept": "text/event-stream",
+            "Authorization": f"Bearer {self.token['access_token']}",
+            "x-api-key": self.api_key,
+        }
+        timeout = aiohttp.ClientTimeout(total=None, sock_connect=5, sock_read=None)
+        connect_started_at = asyncio.get_running_loop().time()
+        _LOGGER.debug("Opening Electrolux livestream SSE endpoint")
+
+        try:
+            async with aiohttp.ClientSession() as websession:
+                async with websession.get(livestream_url, timeout=timeout, headers=headers) as response:
+                    response.raise_for_status()
+                    connect_elapsed = asyncio.get_running_loop().time() - connect_started_at
+                    _LOGGER.debug("Connected to Electrolux livestream SSE endpoint after %.2fs", connect_elapsed)
+
+                    while True:
+                        event_type = None
+                        data_lines: list[str] = []
+
+                        while True:
+                            if response.closed:
+                                raise ConnectionError("SSE response stream closed unexpectedly")
+
+                            line = await asyncio.wait_for(response.content.readline(), timeout=120)
+                            if not line:
+                                raise ConnectionError("SSE connection closed by server")
+
+                            line_str = line.decode().strip()
+                            if line_str == "":
+                                break
+                            if line_str.startswith(":"):
+                                continue
+                            if line_str.startswith("event:"):
+                                event_type = line_str.removeprefix("event:").strip()
+                            elif line_str.startswith("data:"):
+                                data_lines.append(line_str.removeprefix("data:").strip())
+
+                        if event_type == "ping" or not data_lines:
+                            continue
+
+                        try:
+                            event = json.loads("\n".join(data_lines))
+                        except json.JSONDecodeError:
+                            _LOGGER.debug("Ignoring invalid livestream event payload: %s", data_lines)
+                            continue
+
+                        if isinstance(event, dict):
+                            _LOGGER.debug(
+                                "Received Electrolux livestream event type=%s payload=%s",
+                                event_type or "message",
+                                event,
+                            )
+                            yield event
+        finally:
+            _LOGGER.debug("Closing Electrolux livestream SSE endpoint")
 
     async def get_appliance_info(self, appliance_id: str) -> Optional[ApplianceInfo]:
         try:

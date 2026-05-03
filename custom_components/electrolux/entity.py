@@ -8,6 +8,7 @@ from .device import device_info_for_appliance
 class ElectroluxApplianceEntity:
     appliance: Appliance
     info: ApplianceInfo
+    livestream_properties: frozenset[str] | None = None
 
     @property
     def appliance_id(self) -> str:

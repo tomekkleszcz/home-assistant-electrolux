@@ -8,7 +8,16 @@ from homeassistant.core import HomeAssistant, callback
 from homeassistant.exceptions import HomeAssistantError
 from homeassistant.config_entries import ConfigEntry
 from .options_flow import ElectroluxOptionsFlow
-from .const import DOMAIN, CONF_API_KEY, CONF_REFRESH_TOKEN, CONF_ACCESS_TOKEN, CONF_TOKEN_EXPIRATION_DATE, CONF_ACCOUNT_EMAIL
+from .const import (
+    CONF_ACCESS_TOKEN,
+    CONF_ACCOUNT_EMAIL,
+    CONF_API_KEY,
+    CONF_REFRESH_TOKEN,
+    CONF_TOKEN_EXPIRATION_DATE,
+    CONF_USE_LIVESTREAM_UPDATES,
+    DOMAIN,
+    MIN_SCAN_INTERVAL,
+)
 from .token import Token
 from .hub import ElectroluxHub
 from .jwt_utils import get_token_expiration
@@ -21,13 +30,16 @@ STEP_USER_DATA_SCHEMA = vol.Schema(
         vol.Required(CONF_API_KEY): str,
         vol.Required(CONF_ACCESS_TOKEN): str,
         vol.Required(CONF_REFRESH_TOKEN): str,
-        vol.Required(CONF_SCAN_INTERVAL, default=120): int,
+        vol.Required(CONF_USE_LIVESTREAM_UPDATES, default=True): bool,
     }
 )
 
-STEP_OPTIONS_DATA_SCHEMA = vol.Schema(
+STEP_POLLING_OPTIONS_DATA_SCHEMA = vol.Schema(
     {
-        vol.Required(CONF_SCAN_INTERVAL, default=120): int,
+        vol.Required(CONF_SCAN_INTERVAL, default=120): vol.All(
+            vol.Coerce(int),
+            vol.Range(min=MIN_SCAN_INTERVAL),
+        ),
     }
 )
 
@@ -45,7 +57,8 @@ async def validate_input(hass: HomeAssistant, data: dict[str, Any]) -> dict[str,
         hass=hass,
         api_key=data[CONF_API_KEY],
         token=token,
-        scan_interval=data[CONF_SCAN_INTERVAL]
+        scan_interval=data.get(CONF_SCAN_INTERVAL, 120),
+        use_livestream_updates=data.get(CONF_USE_LIVESTREAM_UPDATES, True),
     )
 
     try:
@@ -62,11 +75,14 @@ async def validate_input(hass: HomeAssistant, data: dict[str, Any]) -> dict[str,
     return {
         "title": account_email,
         CONF_ACCOUNT_EMAIL: account_email,
-        CONF_SCAN_INTERVAL: data[CONF_SCAN_INTERVAL],
         "token_expiration": token_expiration
     }
 
 class ConfigFlow(HassConfigFlow, domain=DOMAIN):
+    _pending_entry_data: dict[str, Any]
+    _pending_entry_options: dict[str, Any]
+    _pending_entry_title: str
+
     async def async_step_user(
         self, user_input: dict[str, Any] | None = None
     ) -> ConfigFlowResult:
@@ -91,8 +107,15 @@ class ConfigFlow(HassConfigFlow, domain=DOMAIN):
                     CONF_ACCOUNT_EMAIL: info[CONF_ACCOUNT_EMAIL]
                 }
                 options = {
-                    CONF_SCAN_INTERVAL: user_input[CONF_SCAN_INTERVAL]
+                    CONF_USE_LIVESTREAM_UPDATES: user_input[CONF_USE_LIVESTREAM_UPDATES],
+                    CONF_SCAN_INTERVAL: 120,
                 }
+                if not user_input[CONF_USE_LIVESTREAM_UPDATES]:
+                    self._pending_entry_data = data
+                    self._pending_entry_options = options
+                    self._pending_entry_title = info["title"]
+                    return await self.async_step_polling()
+
                 return self.async_create_entry(title=info["title"], data=data, options=options)
 
         return self.async_show_form(
@@ -102,6 +125,24 @@ class ConfigFlow(HassConfigFlow, domain=DOMAIN):
             description_placeholders={
                 "docs_url": "https://developer.electrolux.one"
             }
+        )
+
+    async def async_step_polling(
+        self, user_input: dict[str, Any] | None = None
+    ) -> ConfigFlowResult:
+        if user_input is not None:
+            return self.async_create_entry(
+                title=self._pending_entry_title,
+                data=self._pending_entry_data,
+                options={
+                    **self._pending_entry_options,
+                    CONF_SCAN_INTERVAL: user_input[CONF_SCAN_INTERVAL],
+                },
+            )
+
+        return self.async_show_form(
+            step_id="polling",
+            data_schema=STEP_POLLING_OPTIONS_DATA_SCHEMA,
         )
     
     @staticmethod
