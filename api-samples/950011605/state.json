@@ -1,0 +1,43 @@
+{
+  "applianceId": "sample-comfort-600-1",
+  "connectionState": "Connected",
+  "properties": {
+    "reported": {
+      "VmNo_MCU": "V1.0.2",
+      "VmNo_NIU": "VM211_A_05.13.05_AZUL",
+      "ambientTemperatureC": 24,
+      "ambientTemperatureF": null,
+      "applianceData": {
+        "pnc": "950011605"
+      },
+      "applianceState": "running",
+      "capabilities": {},
+      "compressorCoolingRuntime": 5978956,
+      "compressorHeatingRuntime": 10080,
+      "compressorState": "on",
+      "dataModelVersion": "1.0.1",
+      "deviceId": "sample-comfort-600-1",
+      "evapDefrostState": "off",
+      "fanSpeedSetting": "auto",
+      "filterRuntime": 8340,
+      "filterState": "good",
+      "fourWayValveState": "off",
+      "hepaFilterLifeTime": 24064,
+      "logW": 692,
+      "mode": "cool",
+      "schedulerMode": "off",
+      "schedulerSession": "off",
+      "sleepMode": "off",
+      "startTime": 0,
+      "stopTime": 0,
+      "targetTemperatureC": 23,
+      "tasks": {},
+      "temperatureRepresentation": "celsius",
+      "totalRuntime": 7769268,
+      "uiLockMode": false,
+      "upgradeState": "idle",
+      "verticalSwing": "off"
+    }
+  },
+  "status": "enabled"
+}

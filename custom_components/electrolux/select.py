@@ -1,5 +1,5 @@
 from .const import DOMAIN
-from .dynamic import fan_entities
+from .dynamic import select_entities
 
 
 async def async_setup_entry(hass, config_entry, async_add_entities):
@@ -8,6 +8,6 @@ async def async_setup_entry(hass, config_entry, async_add_entities):
     if hub is None:
         return
 
-    entities = fan_entities(hub)
+    entities = select_entities(hub)
     hub.add_entities(entities)
     async_add_entities(entities)

@@ -39,5 +39,63 @@
                 }
             }
         }
+    },
+    "entity": {
+        "climate": {
+            "climate": {
+                "state": {
+                    "auto": "auto"
+                },
+                "state_attributes": {
+                    "fan_mode": {
+                        "state": {
+                            "auto": "auto",
+                            "low": "low",
+                            "middle": "middle",
+                            "high": "high"
+                        }
+                    }
+                }
+            }
+        },
+        "sensor": {
+            "temperature": {
+                "name": "Temperature"
+            },
+            "humidity": {
+                "name": "Humidity"
+            },
+            "tvoc": {
+                "name": "TVOC"
+            },
+            "co2": {
+                "name": "CO2"
+            },
+            "eco2": {
+                "name": "eCO2"
+            },
+            "filter_state": {
+                "name": "Filter state",
+                "state": {
+                    "clean": "clean",
+                    "dirty": "dirty",
+                    "replace": "replace"
+                }
+            }
+        },
+        "switch": {
+            "ionizer": {
+                "name": "Ionizer"
+            },
+            "safety_lock": {
+                "name": "Safety Lock"
+            },
+            "ui_light": {
+                "name": "UI Light"
+            },
+            "sleep_mode": {
+                "name": "Sleep mode"
+            }
+        }
     }
 }

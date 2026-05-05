@@ -39,5 +39,63 @@
                 }
             }
         }
+    },
+    "entity": {
+        "climate": {
+            "climate": {
+                "state": {
+                    "auto": "auto"
+                },
+                "state_attributes": {
+                    "fan_mode": {
+                        "state": {
+                            "auto": "auto",
+                            "low": "niski",
+                            "middle": "średni",
+                            "high": "wysoki"
+                        }
+                    }
+                }
+            }
+        },
+        "sensor": {
+            "temperature": {
+                "name": "Temperatura"
+            },
+            "humidity": {
+                "name": "Wilgotność"
+            },
+            "tvoc": {
+                "name": "TVOC"
+            },
+            "co2": {
+                "name": "CO2"
+            },
+            "eco2": {
+                "name": "eCO2"
+            },
+            "filter_state": {
+                "name": "Stan filtra",
+                "state": {
+                    "clean": "czysty",
+                    "dirty": "brudny",
+                    "replace": "wymień"
+                }
+            }
+        },
+        "switch": {
+            "ionizer": {
+                "name": "Jonizator"
+            },
+            "safety_lock": {
+                "name": "Blokada dziecięca"
+            },
+            "ui_light": {
+                "name": "Lampka jakości powietrza"
+            },
+            "sleep_mode": {
+                "name": "Tryb snu"
+            }
+        }
     }
 }

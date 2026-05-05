@@ -1,0 +1,349 @@
+{
+  "applianceInfo": {
+    "brand": "ELECTROLUX",
+    "colour": "MATTSILVER",
+    "deviceType": "PORTABLE_AIR_CONDITIONER",
+    "model": "COMFORT600",
+    "pnc": "950011605",
+    "variant": "AZULTM06"
+  },
+  "capabilities": {
+    "alerts": {
+      "access": "read",
+      "type": "alert",
+      "values": {
+        "COMMUNICATION_FAULT": {},
+        "DC_MOTOR_FAULT": {},
+        "DRAIN_PAN_FULL": {},
+        "INDOOR_DEFROST_THERMISTOR_FAULT": {},
+        "ROOM_TEMPERATURE_THERMISTOR_FAULT": {}
+      }
+    },
+    "ambientTemperatureC": {
+      "access": "read",
+      "step": 1,
+      "type": "int"
+    },
+    "applianceState": {
+      "access": "read",
+      "type": "string",
+      "values": {
+        "OFF": {},
+        "RUNNING": {}
+      }
+    },
+    "executeCommand": {
+      "access": "readwrite",
+      "schedulable": true,
+      "type": "string",
+      "values": {
+        "OFF": {},
+        "ON": {}
+      }
+    },
+    "fanSpeedSetting": {
+      "access": "readwrite",
+      "schedulable": true,
+      "type": "string",
+      "values": {
+        "AUTO": {},
+        "HIGH": {},
+        "LOW": {},
+        "MIDDLE": {}
+      }
+    },
+    "fanSpeedState": {
+      "access": "read",
+      "type": "string",
+      "values": {
+        "HIGH": {},
+        "LOW": {},
+        "MIDDLE": {}
+      }
+    },
+    "mode": {
+      "access": "readwrite",
+      "schedulable": true,
+      "triggers": [
+        {
+          "action": {
+            "fanSpeedSetting": {
+              "access": "readwrite",
+              "type": "string",
+              "values": {
+                "HIGH": {},
+                "LOW": {},
+                "MIDDLE": {}
+              }
+            },
+            "sleepMode": {
+              "disabled": true
+            },
+            "targetTemperatureC": {
+              "access": "readwrite",
+              "default": 23,
+              "disabled": true,
+              "max": 23,
+              "min": 23,
+              "step": 1,
+              "type": "temperature"
+            }
+          },
+          "condition": {
+            "operand_1": "value",
+            "operand_2": "FANONLY",
+            "operator": "eq"
+          }
+        },
+        {
+          "action": {
+            "fanSpeedSetting": {
+              "access": "read",
+              "type": "string",
+              "values": {
+                "LOW": {}
+              }
+            },
+            "sleepMode": {
+              "disabled": true
+            },
+            "targetTemperatureC": {
+              "access": "readwrite",
+              "default": 23,
+              "disabled": true,
+              "max": 23,
+              "min": 23,
+              "step": 1,
+              "type": "temperature"
+            }
+          },
+          "condition": {
+            "operand_1": "value",
+            "operand_2": "DRY",
+            "operator": "eq"
+          }
+        },
+        {
+          "action": {
+            "fanSpeedSetting": {
+              "access": "read",
+              "type": "string",
+              "values": {
+                "AUTO": {}
+              }
+            },
+            "sleepMode": {
+              "disabled": false
+            },
+            "targetTemperatureC": {
+              "access": "readwrite",
+              "default": 16,
+              "max": 32,
+              "min": 16,
+              "step": 1,
+              "type": "temperature"
+            }
+          },
+          "condition": {
+            "operand_1": "value",
+            "operand_2": "AUTO",
+            "operator": "eq"
+          }
+        },
+        {
+          "action": {
+            "fanSpeedSetting": {
+              "access": "readwrite",
+              "type": "string",
+              "values": {
+                "AUTO": {},
+                "HIGH": {},
+                "LOW": {},
+                "MIDDLE": {}
+              }
+            },
+            "sleepMode": {
+              "disabled": false
+            },
+            "targetTemperatureC": {
+              "access": "readwrite",
+              "default": 16,
+              "max": 32,
+              "min": 16,
+              "step": 1,
+              "type": "temperature"
+            }
+          },
+          "condition": {
+            "operand_1": "value",
+            "operand_2": "COOL",
+            "operator": "eq"
+          }
+        },
+        {
+          "action": {
+            "fanSpeedSetting": {
+              "access": "readwrite",
+              "type": "string",
+              "values": {
+                "AUTO": {},
+                "HIGH": {},
+                "LOW": {},
+                "MIDDLE": {}
+              }
+            },
+            "sleepMode": {
+              "disabled": false
+            },
+            "targetTemperatureC": {
+              "access": "readwrite",
+              "default": 16,
+              "max": 32,
+              "min": 16,
+              "step": 1,
+              "type": "temperature"
+            }
+          },
+          "condition": {
+            "operand_1": "value",
+            "operand_2": "HEAT",
+            "operator": "eq"
+          }
+        }
+      ],
+      "type": "string",
+      "values": {
+        "AUTO": {},
+        "COOL": {},
+        "DRY": {},
+        "FANONLY": {},
+        "HEAT": {},
+        "OFF": {
+          "disabled": true
+        }
+      }
+    },
+    "sleepMode": {
+      "access": "readwrite",
+      "type": "string",
+      "values": {
+        "OFF": {},
+        "ON": {}
+      }
+    },
+    "startTime": {
+      "access": "readwrite",
+      "max": 86400,
+      "min": 0,
+      "step": 1800,
+      "type": "number",
+      "values": {
+        "0": {},
+        "10800": {},
+        "12600": {},
+        "14400": {},
+        "16200": {},
+        "1800": {},
+        "18000": {},
+        "19800": {},
+        "21600": {},
+        "23400": {},
+        "25200": {},
+        "27000": {},
+        "28800": {},
+        "30600": {},
+        "32400": {},
+        "34200": {},
+        "3600": {},
+        "36000": {},
+        "39600": {},
+        "43200": {},
+        "46800": {},
+        "50400": {},
+        "5400": {},
+        "54000": {},
+        "57600": {},
+        "61200": {},
+        "64800": {},
+        "68400": {},
+        "7200": {},
+        "72000": {},
+        "75600": {},
+        "79200": {},
+        "82800": {},
+        "86400": {},
+        "9000": {}
+      }
+    },
+    "stopTime": {
+      "access": "readwrite",
+      "max": 86400,
+      "min": 0,
+      "step": 1800,
+      "type": "number",
+      "values": {
+        "0": {},
+        "10800": {},
+        "12600": {},
+        "14400": {},
+        "16200": {},
+        "1800": {},
+        "18000": {},
+        "19800": {},
+        "21600": {},
+        "23400": {},
+        "25200": {},
+        "27000": {},
+        "28800": {},
+        "30600": {},
+        "32400": {},
+        "34200": {},
+        "3600": {},
+        "36000": {},
+        "39600": {},
+        "43200": {},
+        "46800": {},
+        "50400": {},
+        "5400": {},
+        "54000": {},
+        "57600": {},
+        "61200": {},
+        "64800": {},
+        "68400": {},
+        "7200": {},
+        "72000": {},
+        "75600": {},
+        "79200": {},
+        "82800": {},
+        "86400": {},
+        "9000": {}
+      }
+    },
+    "targetTemperatureC": {
+      "access": "readwrite",
+      "default": 16,
+      "max": 32,
+      "min": 16,
+      "schedulable": true,
+      "step": 1,
+      "type": "temperature"
+    },
+    "uiLockMode": {
+      "access": "readwrite",
+      "type": "boolean",
+      "values": {
+        "OFF": {},
+        "ON": {}
+      }
+    },
+    "verticalSwing": {
+      "access": "readwrite",
+      "schedulable": true,
+      "type": "string",
+      "values": {
+        "OFF": {},
+        "ON": {}
+      }
+    }
+  }
+}
