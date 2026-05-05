@@ -14,6 +14,7 @@ from .dynamic_helpers import (
     DynamicElectroluxEntity,
     _capability_value,
     _display_name,
+    _is_ignored_control_capability,
     _is_on_value,
     _is_switch_capability,
     _known_switch_unique_id,
@@ -29,7 +30,7 @@ def switch_entities(hub: ElectroluxHub) -> list[SwitchEntity]:
     for appliance_data in hub.get_discovered_appliance_data():
         consumed = _main_entity_consumed_paths(appliance_data)
         for capability in appliance_data.info.capabilities.values():
-            if capability.path in consumed or not capability.access.can_write:
+            if capability.path in consumed or _is_ignored_control_capability(capability) or not capability.access.can_write:
                 continue
             if _is_switch_capability(capability):
                 entities.append(DynamicSwitch(hub, appliance_data, capability.path))
@@ -41,7 +42,12 @@ def select_entities(hub: ElectroluxHub) -> list[SelectEntity]:
     for appliance_data in hub.get_discovered_appliance_data():
         consumed = _main_entity_consumed_paths(appliance_data)
         for capability in appliance_data.info.capabilities.values():
-            if capability.path in consumed or not capability.access.can_write or _is_switch_capability(capability):
+            if (
+                capability.path in consumed
+                or _is_ignored_control_capability(capability)
+                or not capability.access.can_write
+                or _is_switch_capability(capability)
+            ):
                 continue
             if capability.type == "string" and capability.values:
                 entities.append(DynamicSelect(hub, appliance_data, capability.path))
@@ -53,7 +59,7 @@ def number_entities(hub: ElectroluxHub) -> list[NumberEntity]:
     for appliance_data in hub.get_discovered_appliance_data():
         consumed = _main_entity_consumed_paths(appliance_data)
         for capability in appliance_data.info.capabilities.values():
-            if capability.path in consumed or not capability.access.can_write:
+            if capability.path in consumed or _is_ignored_control_capability(capability) or not capability.access.can_write:
                 continue
             if capability.is_numeric:
                 entities.append(DynamicNumber(hub, appliance_data, capability.path))

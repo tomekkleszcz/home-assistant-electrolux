@@ -58,6 +58,7 @@ class DynamicSensor(DynamicElectroluxEntity, SensorEntity):
     ) -> None:
         super().__init__(hub, appliance_data)
         self.capability_path = capability_path
+        self.metadata = metadata or {}
         self.livestream_properties = frozenset({capability_path})
         self._attr_unique_id = _known_sensor_unique_id(self.appliance.id, capability_path) or (
             f"electrolux_sensor_{self.appliance.id}_{_safe_id(capability_path)}"
@@ -76,7 +77,7 @@ class DynamicSensor(DynamicElectroluxEntity, SensorEntity):
         self._update_attributes()
 
     def _update_attributes(self) -> None:
-        self._attr_native_value = self.state_value(self.capability_path)
+        self._attr_native_value = _sensor_native_value(self.state_value(self.capability_path), self.metadata)
 
     @property
     def available(self) -> bool:
@@ -120,10 +121,31 @@ def _sensor_metadata_for_path(path: str) -> dict[str, Any] | None:
         "temperature": {"name": "Temperature", "translation_key": "temperature", "unit": UnitOfTemperature.CELSIUS, "device_class": SensorDeviceClass.TEMPERATURE},
         "FilterLife_1": {"name": "Filter Life 1", "unit": PERCENTAGE},
         "FilterLife_2": {"name": "Filter Life 2", "unit": PERCENTAGE},
-        "filterState": {"name": "Filter State"},
-        "FilterState": {"name": "Filter State"},
+        "filterState": {"name": "Filter State", "translation_key": "filter_state", "state_map": _FILTER_STATE_MAP},
+        "FilterState": {"name": "Filter State", "translation_key": "filter_state", "state_map": _FILTER_STATE_MAP},
     }
     return mapping.get(leaf)
+
+
+_FILTER_STATE_MAP = {
+    "CLEAN": "dirty",
+    "CLEANFILTER": "dirty",
+    "DIRTY": "dirty",
+    "GOOD": "clean",
+    "OK": "clean",
+    "NEEDSCLEANING": "dirty",
+    "REPLACE": "replace",
+    "REPLACEFILTER": "replace",
+}
+
+
+def _sensor_native_value(value: Any, metadata: dict[str, Any]) -> Any:
+    state_map = metadata.get("state_map")
+    if not isinstance(state_map, dict):
+        return value
+
+    normalized_value = str(value).strip().replace("_", "").replace(" ", "").upper()
+    return state_map.get(normalized_value, value)
 
 
 def _known_sensor_unique_id(appliance_id: str, capability_path: str) -> str | None:

@@ -41,6 +41,23 @@
         }
     },
     "entity": {
+        "climate": {
+            "climate": {
+                "state": {
+                    "auto": "auto"
+                },
+                "state_attributes": {
+                    "fan_mode": {
+                        "state": {
+                            "auto": "auto",
+                            "low": "low",
+                            "middle": "middle",
+                            "high": "high"
+                        }
+                    }
+                }
+            }
+        },
         "sensor": {
             "temperature": {
                 "name": "Temperature"
@@ -56,6 +73,14 @@
             },
             "eco2": {
                 "name": "eCO2"
+            },
+            "filter_state": {
+                "name": "Filter state",
+                "state": {
+                    "clean": "clean",
+                    "dirty": "dirty",
+                    "replace": "replace"
+                }
             }
         },
         "switch": {
@@ -67,6 +92,9 @@
             },
             "ui_light": {
                 "name": "UI Light"
+            },
+            "sleep_mode": {
+                "name": "Sleep mode"
             }
         }
     }

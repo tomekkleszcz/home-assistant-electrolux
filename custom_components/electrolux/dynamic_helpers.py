@@ -107,11 +107,13 @@ def _known_switch_unique_id(appliance_id: str, capability_path: str) -> str | No
 
 def _known_translation_key(capability_path: str) -> str | None:
     mapping = {
-        "Ionizer": "ionizer",
-        "SafetyLock": "safety_lock",
-        "UILight": "ui_light",
+        "IONIZER": "ionizer",
+        "SAFETYLOCK": "safety_lock",
+        "UILOCKMODE": "safety_lock",
+        "UILIGHT": "ui_light",
+        "SLEEPMODE": "sleep_mode",
     }
-    return mapping.get(capability_path.rsplit(".", 1)[-1])
+    return mapping.get(_normalize_value(capability_path.rsplit(".", 1)[-1]))
 
 
 def _is_switch_capability(capability: Capability) -> bool:
@@ -126,6 +128,10 @@ def _is_switch_capability(capability: Capability) -> bool:
         "ENABLED",
         "DISABLED",
     }
+
+
+def _is_ignored_control_capability(capability: Capability) -> bool:
+    return _normalize_value(capability.path.rsplit(".", 1)[-1]) in {"STARTTIME", "STOPTIME"}
 
 
 def _is_running(value: Any) -> bool:

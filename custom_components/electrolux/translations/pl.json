@@ -41,6 +41,23 @@
         }
     },
     "entity": {
+        "climate": {
+            "climate": {
+                "state": {
+                    "auto": "auto"
+                },
+                "state_attributes": {
+                    "fan_mode": {
+                        "state": {
+                            "auto": "auto",
+                            "low": "niski",
+                            "middle": "średni",
+                            "high": "wysoki"
+                        }
+                    }
+                }
+            }
+        },
         "sensor": {
             "temperature": {
                 "name": "Temperatura"
@@ -56,6 +73,14 @@
             },
             "eco2": {
                 "name": "eCO2"
+            },
+            "filter_state": {
+                "name": "Stan filtra",
+                "state": {
+                    "clean": "czysty",
+                    "dirty": "brudny",
+                    "replace": "wymień"
+                }
             }
         },
         "switch": {
@@ -67,6 +92,9 @@
             },
             "ui_light": {
                 "name": "Lampka jakości powietrza"
+            },
+            "sleep_mode": {
+                "name": "Tryb snu"
             }
         }
     }

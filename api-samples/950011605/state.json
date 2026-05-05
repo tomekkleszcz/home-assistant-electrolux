@@ -1,0 +1,19 @@
+{
+  "applianceId": "sample-comfort-600-1",
+  "connectionState": "CONNECTED",
+  "properties": {
+    "reported": {
+      "ambientTemperatureC": 23,
+      "applianceState": "RUNNING",
+      "fanSpeedSetting": "AUTO",
+      "filterState": "GOOD",
+      "mode": "COOL",
+      "sleepMode": "OFF",
+      "targetTemperatureC": 21,
+      "temperatureRepresentation": "CELSIUS",
+      "uiLockMode": false,
+      "verticalSwing": "OFF"
+    }
+  },
+  "status": "ENABLED"
+}
