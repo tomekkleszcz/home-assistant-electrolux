@@ -133,6 +133,50 @@ class CapabilitiesTest(unittest.TestCase):
         self.assertTrue(runtime["Fanspeed"].disabled)
         self.assertFalse(runtime["Fanspeed"].can_write)
 
+    def test_ac_fanonly_limits_fan_speed_setting(self):
+        info = capabilities_from_json(
+            {
+                "applianceInfo": {"deviceType": "PORTABLE_AIR_CONDITIONER"},
+                "capabilities": {
+                    "mode": {
+                        "access": "readwrite",
+                        "type": "string",
+                        "values": {"AUTO": {}, "COOL": {}, "FANONLY": {}},
+                        "triggers": [
+                            {
+                                "condition": {"operand_1": "value", "operator": "eq", "operand_2": "FANONLY"},
+                                "action": {
+                                    "fanSpeedSetting": {
+                                        "access": "readwrite",
+                                        "type": "string",
+                                        "values": {"HIGH": {}, "LOW": {}, "MIDDLE": {}},
+                                    },
+                                    "targetTemperatureC": {
+                                        "access": "readwrite",
+                                        "disabled": True,
+                                        "type": "temperature",
+                                    },
+                                },
+                            }
+                        ],
+                    },
+                    "fanSpeedSetting": {
+                        "access": "readwrite",
+                        "type": "string",
+                        "values": {"AUTO": {}, "HIGH": {}, "LOW": {}, "MIDDLE": {}},
+                    },
+                    "fanSpeedState": {"access": "read", "type": "string", "values": {"HIGH": {}, "LOW": {}, "MIDDLE": {}}},
+                    "targetTemperatureC": {"access": "readwrite", "type": "temperature", "min": 16, "max": 30},
+                },
+            }
+        )
+
+        runtime = info.runtime_capabilities({"mode": "FANONLY", "fanSpeedSetting": "auto"})
+
+        self.assertEqual(runtime["fanSpeedSetting"].values, ("HIGH", "LOW", "MIDDLE"))
+        self.assertNotIn("AUTO", {value.upper() for value in runtime["fanSpeedSetting"].values})
+        self.assertEqual(runtime["fanSpeedSetting"].values[0], "HIGH")
+
     def test_command_body_for_legacy_and_dam(self):
         legacy_info = capabilities_from_json(
             {

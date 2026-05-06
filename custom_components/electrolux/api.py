@@ -2,7 +2,7 @@ import asyncio
 import aiohttp
 import json
 import logging
-from collections.abc import AsyncIterator
+from collections.abc import AsyncIterator, Awaitable, Callable
 from datetime import datetime, timedelta
 from typing import Any, Optional, Protocol
 from urllib.parse import urlparse
@@ -192,7 +192,11 @@ class ElectroluxAPI:
             _LOGGER.error(f"Failed to get livestream configuration: {e}")
             return None
 
-    async def stream_livestream_events(self, livestream_url: str) -> AsyncIterator[dict[str, Any]]:
+    async def stream_livestream_events(
+        self,
+        livestream_url: str,
+        on_connected: Callable[[], Awaitable[None]] | None = None,
+    ) -> AsyncIterator[dict[str, Any]]:
         if not self._is_valid_livestream_url(livestream_url):
             raise ValueError(f"Unexpected livestream URL: {livestream_url}")
 
@@ -213,6 +217,8 @@ class ElectroluxAPI:
                     response.raise_for_status()
                     connect_elapsed = asyncio.get_running_loop().time() - connect_started_at
                     _LOGGER.debug("Connected to Electrolux livestream SSE endpoint after %.2fs", connect_elapsed)
+                    if on_connected is not None:
+                        await on_connected()
 
                     while True:
                         event_type = None
