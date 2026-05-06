@@ -1,7 +1,7 @@
 {
     "domain": "electrolux",
     "name": "Electrolux Home",
-    "version": "0.0.8",
+    "version": "0.0.9",
     "codeowners": ["@tomekkleszcz"],
     "config_flow": true,
     "dependencies": ["climate"],
