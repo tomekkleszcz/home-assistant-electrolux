@@ -60,6 +60,7 @@ def _main_entity_consumed_paths(appliance_data: ApplianceData) -> set[str]:
                 _find_capability_path(appliance_data.info, runtime_capabilities, "targetTemperatureC", "targetTemperature"),
                 _find_capability_path(appliance_data.info, runtime_capabilities, "ambientTemperatureC", "Temp", "temperature"),
                 _find_capability_path(appliance_data.info, runtime_capabilities, "fanSpeedSetting", "fanMode"),
+                _find_capability_path(appliance_data.info, runtime_capabilities, "fanSpeedState"),
                 _find_capability_path(appliance_data.info, runtime_capabilities, "verticalSwing"),
             )
             if path is not None

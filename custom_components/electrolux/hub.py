@@ -208,8 +208,8 @@ class ElectroluxHub:
         return True
 
     def _normalize_livestream_value(self, property_name: str, value: Any) -> Any:
-        if property_name == "Workmode":
-            return str(value).strip().upper().replace("_", "").replace(" ", "") if value is not None else None
+        if isinstance(value, str):
+            return value.strip().upper().replace("_", "").replace(" ", "")
         return value
 
     def _set_livestream_supported_properties(self, supported_properties: dict[str, set[str]]) -> None:
@@ -237,11 +237,17 @@ class ElectroluxHub:
             if not self._entity_handles_livestream_property(entity, changed_property):
                 continue
 
+            if getattr(entity, "hass", None) is None:
+                continue
+
             try:
                 if hasattr(entity, 'appliance_state'):
                     entity.appliance_state = state
                 if hasattr(entity, 'appliance_data') and entity.appliance_id in self.discovered_appliance_data:
                     entity.appliance_data = self.discovered_appliance_data[entity.appliance_id]
+
+                if hasattr(entity, '_handle_appliance_state_update'):
+                    entity._handle_appliance_state_update(changed_property)
 
                 if hasattr(entity, '_update_attributes'):
                     entity._update_attributes()
@@ -276,18 +282,32 @@ class ElectroluxHub:
         _LOGGER.info("Polling appliances")
 
         try:
-            if not self.discovered_appliance_data:
-                return
-
-            for appliance_data in self.discovered_appliance_data.values():
-                state = await self.api.get_appliance_state(appliance_data.appliance.id)
-                if not state:
-                    continue
-
-                appliance_data.state = state
-                await self._update_entities_for_appliance(appliance_data.appliance.id, state, call_async_update=True)
+            await self._refresh_appliance_states(call_async_update=True)
         except Exception as e:
             _LOGGER.error(f"Error during periodic update: {e}")
+
+    async def _refresh_appliance_states(self, *, call_async_update: bool) -> None:
+        if not self.discovered_appliance_data:
+            return
+
+        for appliance_data in self.discovered_appliance_data.values():
+            state = await self.api.get_appliance_state(appliance_data.appliance.id)
+            if not state:
+                continue
+
+            appliance_data.state = state
+            await self._update_entities_for_appliance(
+                appliance_data.appliance.id,
+                state,
+                call_async_update=call_async_update,
+            )
+
+    async def _refresh_appliance_states_after_livestream_connect(self) -> None:
+        _LOGGER.debug("Refreshing appliance states after Electrolux livestream connection")
+        try:
+            await self._refresh_appliance_states(call_async_update=False)
+        except Exception as e:
+            _LOGGER.warning("Failed to refresh appliance states after livestream connection: %s", e)
 
     def start_livestream(self) -> None:
         if self._closed:
@@ -317,7 +337,10 @@ class ElectroluxHub:
                     supported_properties,
                 )
 
-                async for event in self.api.stream_livestream_events(livestream_url):
+                async for event in self.api.stream_livestream_events(
+                    livestream_url,
+                    on_connected=self._refresh_appliance_states_after_livestream_connect,
+                ):
                     await self._handle_livestream_event(event, supported_properties)
             except asyncio.CancelledError:
                 raise

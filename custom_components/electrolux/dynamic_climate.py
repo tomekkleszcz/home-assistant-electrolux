@@ -48,6 +48,8 @@ class DynamicClimate(DynamicElectroluxEntity, ClimateEntity):
         self._attr_name = self.appliance.name
         self._attr_translation_key = "climate"
         self._attr_temperature_unit = UnitOfTemperature.CELSIUS
+        self._last_writable_fan_mode: str | None = None
+        self._prefer_last_writable_fan_mode = False
         self._update_attributes()
 
     def _recompute_capability_controls(self) -> None:
@@ -69,6 +71,7 @@ class DynamicClimate(DynamicElectroluxEntity, ClimateEntity):
             "temperature",
         )
         self.fan_mode_path = _find_capability_path(self.info, runtime_capabilities, "fanSpeedSetting", "fanMode")
+        self.fan_speed_state_path = _find_capability_path(self.info, runtime_capabilities, "fanSpeedState")
         self.swing_path = _find_capability_path(self.info, runtime_capabilities, "verticalSwing")
 
         self.consumed_paths = {
@@ -80,6 +83,7 @@ class DynamicClimate(DynamicElectroluxEntity, ClimateEntity):
                 self.target_temperature_path,
                 self.current_temperature_path,
                 self.fan_mode_path,
+                self.fan_speed_state_path,
                 self.swing_path,
             )
             if path is not None
@@ -101,9 +105,13 @@ class DynamicClimate(DynamicElectroluxEntity, ClimateEntity):
             self._set_or_clear_attr("_attr_target_temperature_step", None)
 
         fan_capability = runtime_capabilities.get(self.fan_mode_path) if self.fan_mode_path else None
-        if fan_capability is not None and fan_capability.can_write:
+        if fan_capability is not None and fan_capability.can_read and fan_capability.values:
             self._attr_supported_features |= ClimateEntityFeature.FAN_MODE
-            self._attr_fan_modes = [_fan_mode_state_key(value) for value in fan_capability.values]
+            if fan_capability.can_write:
+                self._attr_fan_modes = [_fan_mode_state_key(value) for value in fan_capability.values]
+            else:
+                fan_mode = self._fan_mode_from_state(fan_capability)
+                self._attr_fan_modes = [fan_mode] if fan_mode else [_fan_mode_state_key(fan_capability.values[0])]
         else:
             self._attr_fan_modes = None
 
@@ -147,20 +155,69 @@ class DynamicClimate(DynamicElectroluxEntity, ClimateEntity):
         self._attr_hvac_mode = mode if running and mode else (HVACMode.AUTO if running else HVACMode.OFF)
         self._attr_target_temperature = self.state_value(self.target_temperature_path)
         self._attr_current_temperature = self.state_value(self.current_temperature_path)
+        self._remember_writable_fan_mode()
         self._attr_fan_mode = self._fan_mode_from_state()
         self._attr_swing_mode = _on_off_state(self.state_value(self.swing_path))
+        if self._attr_hvac_mode == HVACMode.OFF:
+            self._clear_off_controls()
+
+    def _clear_off_controls(self) -> None:
+        self._attr_supported_features &= ~(
+            ClimateEntityFeature.TARGET_TEMPERATURE | ClimateEntityFeature.FAN_MODE | ClimateEntityFeature.SWING_MODE
+        )
+        self._attr_fan_modes = None
+        self._attr_swing_modes = None
+        self._attr_target_temperature = None
+        self._attr_fan_mode = None
+        self._attr_swing_mode = None
 
     def _set_local_running_state(self, running: bool) -> None:
         if self.state_path is not None:
             self.appliance_state.set_reported(self.state_path, "RUNNING" if running else "OFF")
 
-    def _fan_mode_from_state(self) -> str | None:
-        value = self.state_value(self.fan_mode_path)
-        if value is None:
-            return None
+    def _fan_mode_from_state(self, capability: Capability | None = None) -> str | None:
+        capability = capability or self.capability(self.fan_mode_path)
+        if capability is None:
+            value = self.state_value(self.fan_mode_path)
+            return _fan_mode_state_key(str(value)) if value is not None else None
 
-        capability_value = _capability_value(self.capability(self.fan_mode_path), (str(value),), str(value))
-        return _fan_mode_state_key(capability_value)
+        if (
+            capability.can_write
+            and self._prefer_last_writable_fan_mode
+            and _fan_mode_capability_value(capability, self._last_writable_fan_mode) is not None
+        ):
+            return self._last_writable_fan_mode
+
+        paths = (
+            (self.fan_mode_path, self.fan_speed_state_path)
+            if capability.can_write
+            else (self.fan_speed_state_path, self.fan_mode_path)
+        )
+        for path in paths:
+            capability_value = _fan_mode_capability_value(capability, self.state_value(path))
+            if capability_value is not None:
+                return _fan_mode_state_key(capability_value)
+
+        if capability.values:
+            return _fan_mode_state_key(capability.values[0])
+
+        return None
+
+    def _remember_writable_fan_mode(self) -> None:
+        if self._prefer_last_writable_fan_mode:
+            return
+
+        capability = self.capability(self.fan_mode_path)
+        if capability is None or not capability.can_write:
+            return
+
+        capability_value = _fan_mode_capability_value(capability, self.state_value(self.fan_mode_path))
+        if capability_value is not None:
+            self._last_writable_fan_mode = _fan_mode_state_key(capability_value)
+
+    def _handle_appliance_state_update(self, changed_property: str | None) -> None:
+        if changed_property is None or changed_property == self.fan_mode_path:
+            self._prefer_last_writable_fan_mode = False
 
     async def async_turn_on(self) -> None:
         self._recompute_capability_controls()
@@ -195,14 +252,46 @@ class DynamicClimate(DynamicElectroluxEntity, ClimateEntity):
         if hvac_mode == HVACMode.OFF:
             await self.async_turn_off()
             return
+        previous_fan_capability = self.capability(self.fan_mode_path)
+        previous_fan_writable = bool(previous_fan_capability and previous_fan_capability.can_write)
+        previous_writable_fan_mode = self._last_writable_fan_mode
         if not _is_running(self.state_value(self.state_path)):
             await self.async_turn_on()
             self._recompute_capability_controls()
         if self.mode_path:
             value = _api_mode_from_hvac(self.capability(self.mode_path), hvac_mode)
             if await self.send_capability(self.mode_path, value):
+                self._recompute_capability_controls()
+                await self._align_fan_mode_after_hvac_mode_change(
+                    previous_fan_writable,
+                    previous_writable_fan_mode,
+                )
                 self._update_attributes()
                 self.async_write_ha_state()
+
+    async def _align_fan_mode_after_hvac_mode_change(
+        self,
+        previous_fan_writable: bool,
+        previous_writable_fan_mode: str | None,
+    ) -> None:
+        capability = self.capability(self.fan_mode_path)
+        if self.fan_mode_path is None or capability is None or not capability.can_write or not capability.values:
+            return
+
+        current_value = _fan_mode_capability_value(capability, self.state_value(self.fan_mode_path))
+        if current_value is None:
+            value = capability.values[0]
+            if await self.send_capability(self.fan_mode_path, value):
+                self._last_writable_fan_mode = _fan_mode_state_key(value)
+                self._prefer_last_writable_fan_mode = False
+            return
+
+        if (
+            previous_writable_fan_mode
+            and not previous_fan_writable
+            and _fan_mode_capability_value(capability, previous_writable_fan_mode) is not None
+        ):
+            self._prefer_last_writable_fan_mode = True
 
     async def async_set_temperature(self, **kwargs: Any) -> None:
         self._recompute_capability_controls()
@@ -214,8 +303,13 @@ class DynamicClimate(DynamicElectroluxEntity, ClimateEntity):
 
     async def async_set_fan_mode(self, fan_mode: str) -> None:
         self._recompute_capability_controls()
-        value = _capability_value(self.capability(self.fan_mode_path), (fan_mode,), fan_mode)
-        if self.fan_mode_path and await self.send_capability(self.fan_mode_path, value):
+        capability = self.capability(self.fan_mode_path)
+        if self.fan_mode_path is None or capability is None or not capability.can_write:
+            return
+        value = _capability_value(capability, (fan_mode,), fan_mode)
+        if await self.send_capability(self.fan_mode_path, value):
+            self._last_writable_fan_mode = _fan_mode_state_key(value)
+            self._prefer_last_writable_fan_mode = False
             self._update_attributes()
             self.async_write_ha_state()
 
@@ -231,3 +325,14 @@ class DynamicClimate(DynamicElectroluxEntity, ClimateEntity):
 
 def _fan_mode_state_key(value: str) -> str:
     return FAN_MODE_STATE_KEYS.get(value.upper(), value)
+
+
+def _fan_mode_capability_value(capability: Capability, value: Any) -> str | None:
+    if value is None:
+        return None
+
+    normalized_value = str(value).strip().replace("_", "").replace(" ", "").upper()
+    for capability_value in capability.values:
+        if capability_value.strip().replace("_", "").replace(" ", "").upper() == normalized_value:
+            return capability_value
+    return None
